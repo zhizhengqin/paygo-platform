@@ -1,18 +1,41 @@
+"""测试 Token 引擎（结构化编码版本）。"""
 from app.token_engine import generate_token
 
 
-def test_generate_token_returns_8_digit_string():
-    token = generate_token(device_id="Solar-001", days=30)
-    assert isinstance(token, str)
+def test_generate_returns_8_digit_string():
+    token = generate_token("Solar-001", 30)
     assert len(token) == 8
     assert token.isdigit()
 
 
-def test_generate_token_is_random():
-    t1 = generate_token(device_id="Solar-001", days=30)
-    t2 = generate_token(device_id="Solar-001", days=30)
-    # Both should be valid 8-digit strings
-    assert isinstance(t1, str)
-    assert isinstance(t2, str)
-    assert len(t1) == 8
-    assert len(t2) == 8
+def test_generate_known_device_known_days():
+    token = generate_token("Solar-001", 30)
+    assert token == "07030303"
+
+
+def test_same_device_same_days_same_token():
+    t1 = generate_token("Solar-001", 30)
+    t2 = generate_token("Solar-001", 30)
+    assert t1 == t2
+
+
+def test_different_device_different_hash():
+    t1 = generate_token("Solar-001", 30)
+    t2 = generate_token("Solar-002", 30)
+    assert t1[:4] != t2[:4]
+
+
+def test_different_days_different_token():
+    t1 = generate_token("Solar-001", 30)
+    t2 = generate_token("Solar-001", 60)
+    assert t1 != t2
+
+
+def test_days_1():
+    token = generate_token("X", 1)
+    assert token[4:7] == "001"
+
+
+def test_days_365():
+    token = generate_token("X", 365)
+    assert token[4:7] == "365"
