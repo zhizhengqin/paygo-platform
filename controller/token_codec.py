@@ -4,11 +4,15 @@ Token 格式 (8位数字): {device_hash:4位}{days:3位}{checksum:1位}
 - device_hash = sum(ord(c) for c in device_id) % 10000
 - days = 天数 (1-365)
 - checksum = (device_hash + days) % 10
+
+⚠ 算法与 app/token_engine.py 必须保持同步，修改时两处一起改。
 """
 
 
 def generate(device_id: str, days: int) -> str:
     """生成 8 位数字 Token，编码 device_id 哈希 + 天数 + 校验位。"""
+    if not (1 <= days <= 365):
+        raise ValueError(f"days 必须在 1-365 之间，收到 {days}")
     char_sum = sum(ord(c) for c in device_id)
     device_hash = char_sum % 10000
     checksum = (device_hash + days) % 10
