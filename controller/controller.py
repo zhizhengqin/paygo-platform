@@ -6,8 +6,6 @@ Token 本地解码验证、设备状态管理、天数递减。
 """
 
 import os
-import select
-import sys
 
 from token_codec import decode
 from state_manager import load, save, apply_token, tick
@@ -47,7 +45,6 @@ def render(state):
     print(f"║ 继电器: {RELAY_LABELS[status]:<22}║")
     print("╚══════════════════════════════╝")
     print()
-    print("[N] 输入新Token  [Q] 退出")
 
 
 def main():
@@ -55,16 +52,12 @@ def main():
     while True:
         render(state)
         save(state)
+        print("[N] 输入新Token  [Q] 退出")
+        cmd = input("> ").strip().upper()
 
-        # 等待按键或 1 秒后刷新
-        r, _, _ = select.select([sys.stdin], [], [], 1.0)
-        if not r:
-            continue
-
-        key = sys.stdin.readline().strip().upper()
-        if key == "Q":
+        if cmd == "Q":
             break
-        elif key == "N":
+        elif cmd == "N":
             token = input("Token: ").strip()
             result = decode(token)
             if result is None:
