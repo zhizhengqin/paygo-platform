@@ -1,0 +1,158 @@
+/* static/style.css */
+:root {
+  --green: #059669;
+  --green-light: #d1fae5;
+  --green-bg: #f0fdf4;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-400: #94a3b8;
+  --gray-600: #475569;
+  --gray-800: #1e293b;
+  --radius: 10px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  min-height: 100vh;
+}
+
+/* ---- 顶部导航 ---- */
+.navbar {
+  background: var(--green);
+  color: #fff;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 16px;
+}
+.navbar a { color: #fff; text-decoration: none; font-size: 14px; opacity: 0.9; }
+.navbar a:hover { opacity: 1; }
+
+/* ---- 登录页 ---- */
+.login-container {
+  display: flex; align-items: center; justify-content: center;
+  min-height: calc(100vh - 60px);
+}
+.login-card {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  padding: 40px;
+  width: 360px;
+  text-align: center;
+}
+.login-card h1 { font-size: 22px; margin-bottom: 4px; }
+.login-card .sub { color: var(--gray-400); font-size: 13px; margin-bottom: 24px; }
+.login-card input {
+  width: 100%; padding: 10px 14px; margin-bottom: 12px;
+  border: 1px solid var(--gray-200); border-radius: 8px; font-size: 14px;
+}
+.login-card input:focus { outline: none; border-color: var(--green); }
+.login-card button {
+  width: 100%; padding: 10px; background: var(--green);
+  color: #fff; border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.login-card button:hover { opacity: 0.9; }
+.login-card .error {
+  color: #dc2626; font-size: 13px; margin-bottom: 12px;
+}
+
+/* ---- 主界面布局 ---- */
+.main-layout {
+  display: flex; height: calc(100vh - 54px);
+}
+
+/* 左侧客户列表 */
+.customer-list {
+  width: 320px; background: #fff; border-right: 1px solid var(--gray-200);
+  overflow-y: auto; padding: 16px;
+}
+.customer-list h3 {
+  font-size: 15px; margin-bottom: 12px; color: var(--gray-600);
+}
+.customer-item {
+  padding: 12px; border-radius: 8px; margin-bottom: 6px;
+  cursor: pointer; transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.customer-item:hover { background: var(--green-bg); }
+.customer-item.active {
+  background: var(--green-bg); border-color: var(--green);
+}
+.customer-item .name { font-weight: 600; font-size: 14px; }
+.customer-item .meta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+/* 右侧详情面板 */
+.detail-panel {
+  flex: 1; padding: 24px 32px; overflow-y: auto;
+}
+.detail-panel .empty {
+  color: var(--gray-400); text-align: center; padding-top: 120px;
+}
+.detail-panel .empty p { font-size: 15px; }
+
+.detail-card {
+  background: #fff; border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); padding: 24px;
+}
+.detail-card h2 { font-size: 20px; margin-bottom: 16px; }
+.detail-row {
+  display: flex; padding: 8px 0; border-bottom: 1px solid var(--gray-100);
+  font-size: 14px;
+}
+.detail-row .label { color: var(--gray-400); width: 100px; flex-shrink: 0; }
+.detail-row .value { color: var(--gray-800); }
+
+.btn {
+  display: inline-block; padding: 10px 20px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+}
+.btn-primary { background: var(--green); color: #fff; }
+.btn-primary:hover { opacity: 0.9; }
+.btn-danger { background: #fff; color: #dc2626; border: 1px solid #fecaca; }
+.btn-danger:hover { background: #fef2f2; }
+
+.actions { margin-top: 20px; display: flex; gap: 12px; }
+
+/* ---- 弹窗 / Modal ---- */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.3); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-card {
+  background: #fff; border-radius: var(--radius); padding: 32px;
+  width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.modal-card h3 { margin-bottom: 16px; }
+.modal-card input {
+  width: 100%; padding: 10px; border: 1px solid var(--gray-200);
+  border-radius: 8px; font-size: 14px; margin-bottom: 16px;
+}
+.modal-card .token-display {
+  font-size: 36px; font-weight: 700; letter-spacing: 6px;
+  color: var(--green); background: var(--green-bg);
+  padding: 16px; border-radius: var(--radius); margin: 16px 0;
+}
+.modal-card .token-hint {
+  font-size: 12px; color: var(--gray-400); margin-bottom: 16px;
+}
+.modal-actions { display: flex; gap: 12px; justify-content: center; }
+
+/* ---- 新增客户表单 ---- */
+.form-group { text-align: left; margin-bottom: 12px; }
+.form-group label { font-size: 13px; color: var(--gray-600); display: block; margin-bottom: 4px; }
+.form-group input {
+  width: 100%; padding: 10px; border: 1px solid var(--gray-200);
+  border-radius: 8px; font-size: 14px;
+}
+.form-group input:focus { outline: none; border-color: var(--green); }

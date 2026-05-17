@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PAYGO Solar Platform</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  {% if request.cookies.get('session') == 'authenticated' %}
+  <nav class="navbar">
+    <span>☀️ PAYGO Solar</span>
+    <a href="/logout">退出登录</a>
+  </nav>
+  {% endif %}
+  {% block content %}{% endblock %}
+</body>
+</html>
