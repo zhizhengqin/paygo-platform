@@ -11,22 +11,28 @@
 - 合作MFI：LOLC Cambodia、PRASAC、ACLEDA等
 - 支付方式：通过Bakong系统（柬埔寨国家银行数字支付平台）
 
-## 核心业务流程
-1. 客户通过MFI申请太阳能贷款
-2. MFI审批通过后，安装团队上门安装太阳能系统
-3. 系统安装完成后，客户在设备上输入Starting Code首次激活
-4. 客户每月通过Bakong/MFI App还款
-5. 平台收到还款后，自动生成ADD_TIME Token（延长使用天数）
-6. Token通过SMS发送给客户，客户在设备键盘输入Token解锁
-7. 逾期超过30天，设备自动锁定（发电量归零）
-8. 贷款结清后，生成DISABLE_PAYG Token永久解锁设备
+## 当前原型范围
+
+当前为**第一阶段原型**，仅包含运营后台核心功能。以下功能暂不在范围内：
+- 多管理员 / 角色权限
+- 在线支付集成（Bakong）
+- 真实短信网关对接
+- remaining_days 自动递减逻辑
+- 设备端 Starting Code / DISABLE_PAYG 逻辑
+- 密码加密
+- 数据库持久化
+
+后续迭代规划：
+- Token 引擎切换至 OpenPAYGO 库（ADD_TIME / SET_TIME / DISABLE_PAYG）
+- 接入 Bakong 支付回调
+- 接入 SMS 网关发送 Token
+- 迁移至 PostgreSQL
 
 ## 技术栈
 - 后端框架：Python FastAPI
-- Token库：openpaygo（OpenPAYGO Token开源库）
-- 前端：HTML + JavaScript + Bootstrap 5（CDN）
-- 数据库：内存数据库（原型阶段），后续迁移至PostgreSQL
-- 部署：Render（后端）+ Vercel（前端）
+- 前端：Jinja2 模板 + 纯 CSS（绿色主题 #059669）
+- 数据库：内存 dict（原型阶段）
+- Token 生成：随机 8 位数字串（token_engine.py 预留接口，后续切换 OpenPAYGO）
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现
@@ -42,42 +48,36 @@ paygo-platform/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI主应用入口
-│   ├── models.py            # Pydantic数据模型
-│   ├── database.py          # 内存数据库
+│   ├── db.py                # 内存数据库（customers + tokens）
+│   ├── token_engine.py      # Token生成模块（预留接口）
 │   └── routers/
 │       ├── __init__.py
-│       ├── tokens.py        # Token生成服务
-│       ├── devices.py       # 设备管理接口
-│       └── payments.py      # 支付回调接口
+│       ├── auth.py          # 登录/登出
+│       └── customers.py     # 客户CRUD + Token生成API
 ├── static/
-│   └── dashboard.html       # 运营后台页面
+│   └── style.css            # 全局样式（绿色主题）
+├── templates/
+│   ├── base.html            # 布局框架
+│   ├── login.html           # 登录页
+│   └── dashboard.html       # 主界面（左列表+右详情）
 ├── tests/
 │   ├── __init__.py
-│   ├── test_tokens.py       # Token服务测试
-│   ├── test_devices.py      # 设备管理测试
-│   ├── test_payments.py     # 支付服务测试
-│   └── conftest.py          # 测试夹具
-├── skills/                  # Superpowers技能
-├── docs/superpowers/
-│   ├── plans/               # 开发计划
-│   └── specs/               # 规格文档
-├── device_simulator.py      # 设备模拟器
+│   ├── test_db.py           # 数据库测试
+│   ├── test_token_engine.py # Token引擎测试
+│   ├── test_auth.py         # 认证测试
+│   ├── test_customers_api.py# 客户API测试
+│   └── test_integration.py  # 端到端集成测试
 ├── requirements.txt         # Python依赖
-├── .env                     # 环境变量
 ├── .gitignore              # Git忽略规则
-├── README.md               # 项目说明
 ├── CLAUDE.md               # 本文件
 └── AGENTS.md               # 代理角色定义
 ```
 
 ## 开发规范
-- 强制TDD：每个功能必须有先失败的测试，再写实现代码
+- 强制TDD：每个功能必须先有失败的测试，再写实现代码
 - 代码注释使用中文
-- API接口返回中文错误信息
-- 所有接口使用/api/v1/前缀
-- Token类型：ADD_TIME（增加天数）、SET_TIME（设置天数）、DISABLE_PAYG（永久解锁）
-- 测试设备密钥使用32位十六进制字符串
-- 原型阶段SMS发送仅打印日志
+- 所有API接口使用 `/api/` 前缀
+- 认证方式：单一管理员账号 + session cookie
 - 每次变更后运行全部测试验证
 - 每个功能完成后编写简短的中文提交信息
 
@@ -90,7 +90,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 pytest tests/ -v
 
 # 运行单个测试文件
-pytest tests/test_tokens.py -v
+pytest tests/test_db.py -v
 
 # 访问API文档
 http://localhost:8000/docs
@@ -98,8 +98,3 @@ http://localhost:8000/docs
 # 访问运营后台
 http://localhost:8000/dashboard
 ```
-
-## 测试设备数据
-- SN-KH-001: Victron MultiPlus-II 6kW, Sokha Pich, +85512345678, 密钥dac86b1a29ab82edc5fbbc41ec9530f6
-- SN-KH-002: Growatt MIN 10kW, Dara Chea, +85598765432
-- SN-KH-003: ONESUN 15kW, Maly Kong, +85570123456
