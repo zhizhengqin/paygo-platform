@@ -41,6 +41,13 @@ def apply_token(state: dict, device_id_hash: int, days: int) -> None:
     state["status"] = "active"
 
 
+def reset() -> dict:
+    """重置为默认状态并持久化。"""
+    state = dict(DEFAULT_STATE)
+    save(state)
+    return state
+
+
 def tick(state: dict) -> None:
     """日期推进：根据实际日期差递减天数，归零则锁定。"""
     if state["status"] != "active":

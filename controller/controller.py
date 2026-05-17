@@ -8,7 +8,7 @@ Token 本地解码验证、设备状态管理、天数递减。
 import os
 
 from token_codec import decode
-from state_manager import load, save, apply_token, tick
+from state_manager import load, save, apply_token, tick, reset
 
 
 STATUS_LABELS = {
@@ -52,11 +52,18 @@ def main():
     while True:
         render(state)
         save(state)
-        print("[N] 输入新Token  [Q] 退出")
+        print("[N] 输入新Token  [R] 重置  [Q] 退出")
         cmd = input("> ").strip().upper()
 
         if cmd == "Q":
             break
+        elif cmd == "R":
+            confirm = input("确认重置？将清除绑定和天数 (y/N): ").strip().upper()
+            if confirm == "Y":
+                state = reset()
+                print("已重置为未绑定状态，按回车键继续...")
+                input()
+            continue
         elif cmd == "N":
             token = input("Token: ").strip()
             result = decode(token)
