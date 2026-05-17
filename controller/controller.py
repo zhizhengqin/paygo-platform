@@ -9,8 +9,8 @@ import os
 import select
 import sys
 
-from controller.token_codec import decode
-from controller.state_manager import load, save, apply_token, tick
+from token_codec import decode
+from state_manager import load, save, apply_token, tick
 
 
 STATUS_LABELS = {
