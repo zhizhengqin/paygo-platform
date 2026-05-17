@@ -34,6 +34,12 @@ def delete_customer(customer_id: str) -> bool:
     return False
 
 
+def reset_db():
+    """Clear all in-memory data. Useful for tests."""
+    _customers.clear()
+    _tokens.clear()
+
+
 def get_tokens() -> list:
     return _tokens
 
