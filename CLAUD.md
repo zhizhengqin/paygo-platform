@@ -23,7 +23,6 @@
 - 数据库持久化
 
 后续迭代规划：
-- Token 引擎切换至 OpenPAYGO 库（ADD_TIME / SET_TIME / DISABLE_PAYG）
 - 接入 Bakong 支付回调
 - 接入 SMS 网关发送 Token
 - 迁移至 PostgreSQL
@@ -32,7 +31,7 @@
 - 后端框架：Python FastAPI
 - 前端：Jinja2 模板 + 纯 CSS（绿色主题 #059669）
 - 数据库：内存 dict（原型阶段）
-- Token 生成：随机 8 位数字串（token_engine.py 预留接口，后续切换 OpenPAYGO）
+- Token 生成：OpenPAYGO 标准 v0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现
@@ -48,29 +47,39 @@ paygo-platform/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI主应用入口
-│   ├── db.py                # 内存数据库（customers + tokens）
-│   ├── token_engine.py      # Token生成模块（预留接口）
+│   ├── db.py                # 内存数据库（customers + tokens + SMS + 汇率）
 │   └── routers/
 │       ├── __init__.py
 │       ├── auth.py          # 登录/登出
-│       └── customers.py     # 客户CRUD + Token生成API
+│       ├── customers.py     # 客户CRUD + 模拟支付 + 锁定/永久解锁 API（OpenPAYGO）
+│       └── config.py        # 支付汇率配置 API
+├── controller/
+│   ├── controller.py        # 终端 UI（9位Token输入/密钥绑定/count显示）
+│   └── state_manager.py     # 状态机 + 持久化（secret_key/count/used_counts）
 ├── static/
-│   └── style.css            # 全局样式（绿色主题）
+│   └── style.css            # 全局样式（绿色主题 #059669）
 ├── templates/
 │   ├── base.html            # 布局框架
 │   ├── login.html           # 登录页
 │   └── dashboard.html       # 主界面（左列表+右详情）
 ├── tests/
-│   ├── __init__.py
-│   ├── test_db.py           # 数据库测试
-│   ├── test_token_engine.py # Token引擎测试
-│   ├── test_auth.py         # 认证测试
-│   ├── test_customers_api.py# 客户API测试
-│   └── test_integration.py  # 端到端集成测试
-├── requirements.txt         # Python依赖
-├── .gitignore              # Git忽略规则
-├── CLAUDE.md               # 本文件
-└── AGENTS.md               # 代理角色定义
+│   ├── conftest.py          # 全局 fixture + openpaygo 兼容补丁
+│   ├── test_db.py           # 数据库 (16 tests)
+│   ├── test_auth.py         # 认证 (6 tests)
+│   ├── test_customers_api.py# 客户API (20 tests)
+│   ├── test_state_manager.py# 状态机 (19 tests)
+│   ├── test_config_api.py   # 支付汇率 (2 tests)
+│   ├── test_controller_integration.py  # 控制器集成 (4 tests)
+│   ├── test_integration.py  # 端到端集成 (3 tests)
+│   └── test_upgrade.py      # 五场景 MFI 演示 (9 tests)
+├── docs/
+│   └── superpowers/
+│       ├── specs/           # 设计文档
+│       └── plans/           # 实施计划
+├── requirements.txt
+├── README.md
+├── CLAUDE.md                # 本文件
+└── AGENTS.md                # 代理角色定义
 ```
 
 ## 开发规范
