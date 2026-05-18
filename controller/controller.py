@@ -6,6 +6,7 @@ Token 本地解码验证、设备状态管理、天数递减。
 """
 
 import os
+import unicodedata
 
 from token_codec import decode
 from state_manager import load, save, apply_token, tick, reset
@@ -23,6 +24,21 @@ RELAY_LABELS = {
     "locked": "[断开] 天数用尽",
 }
 
+INNER = 28  # 内容区显示宽度
+
+
+def wlen(s: str) -> int:
+    """计算终端显示宽度（CJK 字符占 2，其余占 1）。"""
+    n = 0
+    for c in s:
+        n += 2 if unicodedata.east_asian_width(c) in ("F", "W") else 1
+    return n
+
+
+def pad(s: str, width: int) -> str:
+    """右填充空格至指定显示宽度。"""
+    return s + " " * (width - wlen(s))
+
 
 def clear_screen():
     os.system("clear")
@@ -37,12 +53,12 @@ def render(state):
     days = state["remaining_days"]
 
     print("╔══════════════════════════════╗")
-    print("║    PAYGO 太阳能控制器       ║")
+    print("║" + pad("PAYGO 太阳能控制器", INNER) + "║")
     print("╠══════════════════════════════╣")
-    print(f"║ 设备:   {device_display:<22}║")
-    print(f"║ 状态:   {STATUS_LABELS[status]:<22}║")
-    print(f"║ 剩余天数: {days} 天{'':<19}║")
-    print(f"║ 继电器: {RELAY_LABELS[status]:<22}║")
+    print("║" + pad(f" 设备:   {device_display}", INNER) + "║")
+    print("║" + pad(f" 状态:   {STATUS_LABELS[status]}", INNER) + "║")
+    print("║" + pad(f" 剩余天数: {days} 天", INNER) + "║")
+    print("║" + pad(f" 继电器: {RELAY_LABELS[status]}", INNER) + "║")
     print("╚══════════════════════════════╝")
     print()
 
