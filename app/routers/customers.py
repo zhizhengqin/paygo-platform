@@ -91,6 +91,7 @@ async def generate_token_for_customer(request: Request, customer_id: str, body: 
     )
     set_customer_count(customer_id, new_count)
     add_token(customer_id, token_str, body.days, new_count)
+    update_customer_status(customer_id, "active")
 
     return {
         "token": token_str,
@@ -128,6 +129,7 @@ async def simulate_payment(request: Request, customer_id: str, body: SimulatePay
     )
     set_customer_count(customer_id, new_count)
     add_token(customer_id, token_str, days, new_count)
+    update_customer_status(customer_id, "active")
 
     message = (
         f"[PAYGO Solar] 尊敬的用户，您已成功支付${body.amount:.2f}。"
