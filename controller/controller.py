@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""PAYGO 太阳能控制器 — 终端模拟脚本。
+"""PAYGO 太阳能控制器 — 终端模拟脚本 (OpenPAYGO)。
 
 运行在安卓 Termux 环境中，模拟 PAYGO 控制器的核心行为：
-Token 本地解码验证（15位）、设备状态管理、天数递减。
+Token 解码验证（OpenPAYGO 9位）、设备状态管理、天数递减。
 """
 
 import os
 
-from token_codec import decode
+from openpaygo import decode_token, TokenType
 from state_manager import (
     load, save, apply_token, tick, reset,
-    fast_forward, is_token_used, mark_token_used,
+    fast_forward,
 )
 
 
@@ -33,7 +33,6 @@ LABEL_W = 8
 
 
 def wlen(s: str) -> int:
-    """计算终端显示宽度：ASCII 占 1，其余占 2。"""
     n = 0
     for c in s:
         n += 1 if ord(c) <= 127 else 2
@@ -41,12 +40,10 @@ def wlen(s: str) -> int:
 
 
 def pad(s: str, width: int) -> str:
-    """右填充空格至指定显示宽度。"""
     return s + " " * (width - wlen(s))
 
 
 def row(label: str, value: str) -> str:
-    """生成对齐行：标签对齐 → 冒号 → 值 → 右边框。"""
     label_pad = label + " " * (LABEL_W - wlen(label))
     return "║" + pad(f" {label_pad}: {value}", INNER) + "║"
 
@@ -59,27 +56,49 @@ def render(state):
     clear_screen()
     tick(state)
 
-    device_display = f"#{state['device_id_hash']:05d}" if state["device_id_hash"] else "--"
+    key_display = state["secret_key"][:8] + "…" if state["secret_key"] else "--"
     status = state["status"]
     days = state["remaining_days"]
 
     print("╔══════════════════════════════╗")
     print("║" + pad("PAYGO 太阳能控制器", INNER) + "║")
     print("╠══════════════════════════════╣")
-    print(row("设备", device_display))
+    print(row("设备密钥", key_display))
     print(row("状态", STATUS_LABELS[status]))
     if days == -1:
         print(row("剩余天数", "∞ 无限"))
     else:
         print(row("剩余天数", f"{days} 天"))
     print(row("继电器", RELAY_LABELS[status]))
+    print(row("Count", str(state["count"])))
     print("╚══════════════════════════════╝")
     print()
+
+
+def initial_setup(state):
+    """首次运行时输入设备密钥。"""
+    if state["secret_key"]:
+        return
+    clear_screen()
+    print("╔══════════════════════════════╗")
+    print("║" + pad("初始设置", INNER) + "║")
+    print("╠══════════════════════════════╣")
+    print("║ 请输入设备预设密钥 (32位hex) ║")
+    print("╚══════════════════════════════╝")
+    key = input("密钥: ").strip()
+    if len(key) == 32 and all(c in "0123456789abcdefABCDEF" for c in key):
+        state["secret_key"] = key
+        save(state)
+        print("密钥已保存，按回车键继续...")
+    else:
+        print("无效密钥格式，按回车键继续...")
+    input()
 
 
 def main():
     state = load()
     while True:
+        initial_setup(state)
         render(state)
         save(state)
         print("[N] 输入新Token  [D] 模拟天数流逝  [R] 重置  [Q] 退出")
@@ -108,34 +127,41 @@ def main():
             input()
             continue
         elif cmd == "N":
-            token = input("Token: ").strip()
-            # 15位校验
-            if len(token) != 15 or not token.isdigit():
+            if not state["secret_key"]:
+                print("请先设置设备密钥，按回车键继续...")
+                input()
+                continue
+
+            token = input("Token (9位): ").strip()
+            if len(token) != 9 or not token.isdigit():
+                print("✗ Token格式错误（需要9位数字），按回车键继续...")
+                input()
+                continue
+
+            value, token_type, new_count, used_counts = decode_token(
+                token=token,
+                secret_key=state["secret_key"],
+                count=state["count"],
+                used_counts=state["used_counts"],
+            )
+
+            if token_type == TokenType.INVALID:
                 print("✗ Token无效，按回车键继续...")
                 input()
                 continue
-
-            result = decode(token)
-            if result is None:
-                print("✗ Token无效，按回车键继续...")
+            elif token_type == TokenType.ALREADY_USED:
+                print("✗ Token已使用过（防重放），按回车键继续...")
                 input()
                 continue
 
-            # 防重放检查
-            if is_token_used(token):
-                print("Token已过期，按回车键继续...")
-                input()
-                continue
-
-            # 应用 Token
-            apply_token(state, result["device_id_hash"], result["days"], result["type"])
-            mark_token_used(token)
+            apply_token(state, int(value) if value else 0,
+                        token_type, new_count, used_counts)
             save(state)
 
-            if result["type"] == 99:
+            if token_type == TokenType.DISABLE_PAYG:
                 print("✓✓✓ 贷款已结清！设备永久解锁！")
             else:
-                print(f"✓ Token验证成功！增加{result['days']}天。")
+                print(f"✓ Token验证成功！增加{int(value)}天。")
             print(f"当前剩余{state['remaining_days']}天")
             print("按回车键继续...")
             input()
