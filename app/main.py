@@ -5,6 +5,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.routers.auth import router as auth_router
 from app.routers.customers import router as customers_router
+from app.routers.config import router as config_router
 
 app = FastAPI(title="Cambodia Solar PAYGO Platform")
 
@@ -17,6 +18,7 @@ templates = Jinja2Templates(directory="templates")
 # 注册路由
 app.include_router(auth_router)
 app.include_router(customers_router)
+app.include_router(config_router)
 
 
 @app.get("/dashboard")
