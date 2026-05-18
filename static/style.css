@@ -69,14 +69,13 @@ body {
   white-space: nowrap;
 }
 .navbar-logo {
-  height: 36px;
+  height: 40px;
   width: auto;
 }
 .navbar-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--foreground);
-  letter-spacing: -0.01em;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted-foreground);
 }
 .navbar-right {
   display: flex;
