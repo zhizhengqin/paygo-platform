@@ -103,3 +103,104 @@ class TestTick:
                  "last_update": "2026-05-10", "status": "locked"}
         sm.tick(state)
         assert state["status"] == "locked"
+
+
+class TestPermanentUnlock:
+    def test_apply_permanent_unlock(self, temp_state_dir):
+        state = dict(sm.DEFAULT_STATE)
+        sm.apply_permanent_unlock(state, device_id_hash=12345)
+        assert state["status"] == "permanent"
+        assert state["remaining_days"] == -1
+        assert state["device_id_hash"] == 12345
+
+    def test_tick_does_not_reduce_permanent(self, temp_state_dir):
+        yesterday = (date.today() - timedelta(days=100)).isoformat()
+        state = {
+            "device_id_hash": 12345,
+            "remaining_days": -1,
+            "last_update": yesterday,
+            "status": "permanent",
+        }
+        sm.tick(state)
+        assert state["remaining_days"] == -1
+        assert state["status"] == "permanent"
+
+    def test_permanent_stays_permanent_forever(self, temp_state_dir):
+        state = {
+            "device_id_hash": 12345,
+            "remaining_days": -1,
+            "last_update": "2020-01-01",
+            "status": "permanent",
+        }
+        sm.tick(state)
+        assert state["status"] == "permanent"
+
+
+class TestAntiReplay:
+    def test_first_use_not_expired(self, temp_state_dir, monkeypatch):
+        import os, json
+        used_dir = os.path.join(temp_state_dir, ".paygo")
+        used_file = os.path.join(used_dir, "used_tokens.json")
+        monkeypatch.setattr(sm, "USED_TOKENS_FILE", used_file)
+        assert not sm.is_token_used("0123400300101265")
+
+    def test_replay_is_detected(self, temp_state_dir, monkeypatch):
+        import os, json
+        used_dir = os.path.join(temp_state_dir, ".paygo")
+        used_file = os.path.join(used_dir, "used_tokens.json")
+        monkeypatch.setattr(sm, "USED_TOKENS_FILE", used_file)
+        token = "0123400300101265"
+        sm.mark_token_used(token)
+        assert sm.is_token_used(token)
+
+    def test_mark_token_persists(self, temp_state_dir, monkeypatch):
+        import os, json
+        used_dir = os.path.join(temp_state_dir, ".paygo")
+        used_file = os.path.join(used_dir, "used_tokens.json")
+        monkeypatch.setattr(sm, "USED_TOKENS_FILE", used_file)
+        token = "9876500600105432"
+        sm.mark_token_used(token)
+        assert sm.is_token_used(token)
+
+
+class TestApplyTokenWithType:
+    def test_type01_activates(self, temp_state_dir):
+        state = dict(sm.DEFAULT_STATE)
+        sm.apply_token(state, device_id_hash=12345, days=30, token_type=1)
+        assert state["status"] == "active"
+        assert state["remaining_days"] == 30
+
+    def test_type99_permanent_unlock(self, temp_state_dir):
+        state = {"device_id_hash": 12345, "remaining_days": 5,
+                 "last_update": "2026-05-18", "status": "active"}
+        sm.apply_token(state, device_id_hash=12345, days=0, token_type=99)
+        assert state["status"] == "permanent"
+        assert state["remaining_days"] == -1
+
+    def test_type01_on_locked_reactivates(self, temp_state_dir):
+        state = {"device_id_hash": 12345, "remaining_days": 0,
+                 "last_update": "2026-05-10", "status": "locked"}
+        sm.apply_token(state, device_id_hash=12345, days=10, token_type=1)
+        assert state["status"] == "active"
+        assert state["remaining_days"] == 10
+
+    def test_fast_forward_reduces_days(self, temp_state_dir):
+        state = {"device_id_hash": 12345, "remaining_days": 30,
+                 "last_update": "2026-05-18", "status": "active"}
+        sm.fast_forward(state, 10)
+        assert state["remaining_days"] == 20
+        assert state["status"] == "active"
+
+    def test_fast_forward_to_lock(self, temp_state_dir):
+        state = {"device_id_hash": 12345, "remaining_days": 5,
+                 "last_update": "2026-05-18", "status": "active"}
+        sm.fast_forward(state, 10)
+        assert state["remaining_days"] == 0
+        assert state["status"] == "locked"
+
+    def test_fast_forward_permanent_does_nothing(self, temp_state_dir):
+        state = {"device_id_hash": 12345, "remaining_days": -1,
+                 "last_update": "2026-05-18", "status": "permanent"}
+        sm.fast_forward(state, 999)
+        assert state["remaining_days"] == -1
+        assert state["status"] == "permanent"
