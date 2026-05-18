@@ -36,6 +36,10 @@
       <label>设备编号</label>
       <input type="text" id="newDevice" placeholder="如 SN-KH-001">
     </div>
+    <div class="form-group">
+      <label>设备密钥（32位hex）</label>
+      <input type="text" id="newSecretKey" placeholder="设备出厂预设的32位hex密钥">
+    </div>
     <div class="modal-actions">
       <button class="btn" style="background:#f1f5f9;color:#475569;"
               onclick="closeModal('addCustomerModal')">取消</button>
@@ -153,8 +157,9 @@ async function selectCustomer(id) {
       <h2>👤 ${c.name}</h2>
       <div class="detail-row"><span class="label">电话</span><span class="value">${c.phone}</span></div>
       <div class="detail-row"><span class="label">设备</span><span class="value">${c.device_id}</span></div>
-      <div class="detail-row"><span class="label">剩余天数</span><span class="value">${c.remaining_days} 天</span></div>
+      <div class="detail-row"><span class="label">设备密钥</span><span class="value" style="font-family:monospace;font-size:11px;">${c.secret_key.substring(0,8)}…</span></div>
       <div class="detail-row"><span class="label">状态</span><span class="value">${statusLabel}</span></div>
+      <div class="detail-row"><span class="label">Count</span><span class="value">${c.count}</span></div>
       <div class="detail-row"><span class="label">创建日期</span><span class="value">${c.created_at}</span></div>
 
       <!-- 模拟支付区域 -->
@@ -193,6 +198,7 @@ function showAddCustomerModal() {
   document.getElementById('newName').value = '';
   document.getElementById('newPhone').value = '';
   document.getElementById('newDevice').value = '';
+  document.getElementById('newSecretKey').value = '';
   document.getElementById('addCustomerModal').classList.add('show');
 }
 
@@ -200,12 +206,19 @@ async function createCustomer() {
   const name = document.getElementById('newName').value.trim();
   const phone = document.getElementById('newPhone').value.trim();
   const device_id = document.getElementById('newDevice').value.trim();
-  if (!name || !phone || !device_id) { alert('请填写所有字段'); return; }
-  await fetch('/api/customers', {
+  const secret_key = document.getElementById('newSecretKey').value.trim();
+  if (!name || !phone || !device_id || !secret_key) { alert('请填写所有字段'); return; }
+  if (secret_key.length !== 32) { alert('设备密钥必须为32位hex字符串'); return; }
+  const resp = await fetch('/api/customers', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name, phone, device_id})
+    body: JSON.stringify({name, phone, device_id, secret_key})
   });
+  if (!resp.ok) {
+    const err = await resp.json();
+    alert('创建失败: ' + (err.detail || resp.statusText));
+    return;
+  }
   closeModal('addCustomerModal');
   await loadCustomers();
 }
@@ -231,7 +244,7 @@ async function simulatePayment() {
   // 展示结果 + 短信
   const token = data.token;
   document.getElementById('tokenResultTitle').textContent = data.days === -1 ? '⭐ 永久解锁码已生成' : '🔑 激活码已生成';
-  document.getElementById('tokenCode').textContent = token.slice(0,5) + ' ' + token.slice(5,9) + ' ' + token.slice(9,11) + ' ' + token.slice(11,15);
+  document.getElementById('tokenCode').textContent = token;
   document.getElementById('smsTo').textContent = data.sms.to;
   document.getElementById('smsBody').textContent = data.sms.message;
   document.getElementById('tokenResultModal').classList.add('show');
@@ -260,7 +273,7 @@ function showPermanentUnlockConfirm(cid, name) {
 
     const token = data.token;
     document.getElementById('tokenResultTitle').textContent = '⭐ 永久解锁码已生成';
-    document.getElementById('tokenCode').textContent = token.slice(0,5) + ' ' + token.slice(5,9) + ' ' + token.slice(9,11) + ' ' + token.slice(11,15);
+    document.getElementById('tokenCode').textContent = token;
     document.getElementById('smsTo').textContent = data.sms.to;
     document.getElementById('smsBody').textContent = data.sms.message;
     document.getElementById('tokenResultModal').classList.add('show');
