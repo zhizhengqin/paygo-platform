@@ -3,6 +3,12 @@ from datetime import datetime, timedelta
 
 _customers: dict[str, dict] = {}
 _tokens: list[dict] = []
+_sms_records: list[dict] = []
+
+_payment_rates: list[dict] = [
+    {"amount": 5, "days": 30},
+    {"amount": 10, "days": 60},
+]
 
 
 def get_customers() -> dict:
@@ -21,10 +27,21 @@ def add_customer(name: str, phone: str, device_id: str) -> str:
         "phone": phone,
         "device_id": device_id,
         "remaining_days": 0,
-        "status": "active",
+        "status": "locked",
         "created_at": datetime.now().strftime("%Y-%m-%d"),
+        "locked_at": None,
     }
     return cid
+
+
+def update_customer_status(customer_id: str, status: str) -> bool:
+    """更新客户状态: active / locked / permanent"""
+    if customer_id not in _customers:
+        return False
+    _customers[customer_id]["status"] = status
+    if status == "locked":
+        _customers[customer_id]["locked_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return True
 
 
 def delete_customer(customer_id: str) -> bool:
@@ -38,6 +55,12 @@ def reset_db():
     """Clear all in-memory data. Useful for tests."""
     _customers.clear()
     _tokens.clear()
+    _sms_records.clear()
+    _payment_rates.clear()
+    _payment_rates.extend([
+        {"amount": 5, "days": 30},
+        {"amount": 10, "days": 60},
+    ])
 
 
 def get_tokens() -> list:
@@ -56,3 +79,33 @@ def add_token(customer_id: str, token: str, days: int) -> str:
         "expires_at": (now + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
     })
     return tid
+
+
+def get_payment_rates() -> list[dict]:
+    return _payment_rates
+
+
+def get_days_for_amount(amount: float) -> int:
+    """根据金额查询对应天数，未匹配返回 0"""
+    for rate in _payment_rates:
+        if rate["amount"] == amount:
+            return rate["days"]
+    return 0
+
+
+def add_sms_record(customer_id: str, to_phone: str, message: str) -> str:
+    sid = f"S{str(uuid.uuid4())[:4].upper()}"
+    _sms_records.append({
+        "id": sid,
+        "customer_id": customer_id,
+        "to": to_phone,
+        "message": message,
+        "sent_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+    return sid
+
+
+def get_sms_records(customer_id: str = None) -> list[dict]:
+    if customer_id:
+        return [r for r in _sms_records if r["customer_id"] == customer_id]
+    return list(_sms_records)
