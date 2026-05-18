@@ -2,11 +2,11 @@
 {% block content %}
 <div class="login-wrapper">
   <div class="login-card">
-    <img src="/static/logo.png" alt="Xinhuazhi" class="login-logo">
+    <img src="/static/logo.png" alt="新华智科技" class="login-logo">
     <h1>太阳能即付即用系统</h1>
-    <p class="subtitle">Pay-As-You-Go Solar Management</p>
+    <p class="subtitle">Pay-As-You-Go Solar Management Platform</p>
     {% if error %}
-    <p class="error">{{ error }}</p>
+    <p class="login-error">{{ error }}</p>
     {% endif %}
     <form method="post" action="/login">
       <div class="form-group">
