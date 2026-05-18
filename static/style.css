@@ -50,14 +50,26 @@ body {
   position: sticky;
   top: 0;
   z-index: 50;
+  position: relative;
 }
 .navbar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 200px;
+}
+.navbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 .navbar-logo {
-  height: 32px;
+  height: 36px;
   width: auto;
 }
 .navbar-title {
