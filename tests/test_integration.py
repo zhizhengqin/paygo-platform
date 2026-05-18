@@ -36,7 +36,7 @@ def test_full_user_flow():
     }, cookies={"session": cookie})
     assert resp.status_code == 200
     token_data = resp.json()
-    assert len(token_data["token"]) == 8
+    assert len(token_data["token"]) == 15
     assert token_data["days"] == 30
 
     # 5. 查看 Token 历史
