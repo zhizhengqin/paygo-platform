@@ -2,29 +2,34 @@
 """PAYGO 太阳能控制器 — 终端模拟脚本。
 
 运行在安卓 Termux 环境中，模拟 PAYGO 控制器的核心行为：
-Token 本地解码验证、设备状态管理、天数递减。
+Token 本地解码验证（15位）、设备状态管理、天数递减。
 """
 
 import os
 
 from token_codec import decode
-from state_manager import load, save, apply_token, tick, reset
+from state_manager import (
+    load, save, apply_token, tick, reset,
+    fast_forward, is_token_used, mark_token_used,
+)
 
 
 STATUS_LABELS = {
     "unbound": "未绑定",
     "active": "已激活",
     "locked": "已锁定",
+    "permanent": "永久解锁",
 }
 
 RELAY_LABELS = {
     "unbound": "[断开]",
     "active": "[闭合] 供电中",
     "locked": "[断开] 天数用尽",
+    "permanent": "[闭合] 供电中",
 }
 
-INNER = 28  # 内容区显示宽度
-LABEL_W = 8  # 标签统一显示宽度（4 个中文字）
+INNER = 28
+LABEL_W = 8
 
 
 def wlen(s: str) -> int:
@@ -54,7 +59,7 @@ def render(state):
     clear_screen()
     tick(state)
 
-    device_display = f"#{state['device_id_hash']:04d}" if state["device_id_hash"] else "--"
+    device_display = f"#{state['device_id_hash']:05d}" if state["device_id_hash"] else "--"
     status = state["status"]
     days = state["remaining_days"]
 
@@ -63,7 +68,10 @@ def render(state):
     print("╠══════════════════════════════╣")
     print(row("设备", device_display))
     print(row("状态", STATUS_LABELS[status]))
-    print(row("剩余天数", f"{days} 天"))
+    if days == -1:
+        print(row("剩余天数", "∞ 无限"))
+    else:
+        print(row("剩余天数", f"{days} 天"))
     print(row("继电器", RELAY_LABELS[status]))
     print("╚══════════════════════════════╝")
     print()
@@ -74,7 +82,7 @@ def main():
     while True:
         render(state)
         save(state)
-        print("[N] 输入新Token  [R] 重置  [Q] 退出")
+        print("[N] 输入新Token  [D] 模拟天数流逝  [R] 重置  [Q] 退出")
         cmd = input("> ").strip().upper()
 
         if cmd == "Q":
@@ -86,16 +94,50 @@ def main():
                 print("已重置为未绑定状态，按回车键继续...")
                 input()
             continue
-        elif cmd == "N":
-            token = input("Token: ").strip()
-            result = decode(token)
-            if result is None:
-                print("无效 Token，按回车键继续...")
+        elif cmd == "D":
+            try:
+                days_input = input("快进天数: ").strip()
+                days = int(days_input)
+            except ValueError:
+                print("无效天数，按回车键继续...")
                 input()
                 continue
-            apply_token(state, result["device_id_hash"], result["days"])
+            fast_forward(state, days)
             save(state)
-            print(f"激活成功！+{result['days']} 天，按回车键继续...")
+            print(f"已快进 {days} 天，按回车键继续...")
+            input()
+            continue
+        elif cmd == "N":
+            token = input("Token: ").strip()
+            # 15位校验
+            if len(token) != 15 or not token.isdigit():
+                print("✗ Token无效，按回车键继续...")
+                input()
+                continue
+
+            result = decode(token)
+            if result is None:
+                print("✗ Token无效，按回车键继续...")
+                input()
+                continue
+
+            # 防重放检查
+            if is_token_used(token):
+                print("Token已过期，按回车键继续...")
+                input()
+                continue
+
+            # 应用 Token
+            apply_token(state, result["device_id_hash"], result["days"], result["type"])
+            mark_token_used(token)
+            save(state)
+
+            if result["type"] == 99:
+                print("✓✓✓ 贷款已结清！设备永久解锁！")
+            else:
+                print(f"✓ Token验证成功！增加{result['days']}天。")
+            print(f"当前剩余{state['remaining_days']}天")
+            print("按回车键继续...")
             input()
 
     print("控制器已退出。")
