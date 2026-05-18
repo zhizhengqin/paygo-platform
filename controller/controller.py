@@ -13,9 +13,9 @@ from state_manager import load, save, apply_token, tick, reset
 
 
 STATUS_LABELS = {
-    "unbound": "○ 未绑定",
-    "active": "● 已激活",
-    "locked": "◇ 已锁定",
+    "unbound": "未绑定",
+    "active": "已激活",
+    "locked": "已锁定",
 }
 
 RELAY_LABELS = {
@@ -26,16 +26,12 @@ RELAY_LABELS = {
 
 INNER = 28  # 内容区显示宽度
 
-# 个别 Ambiguous 符号在中文终端实际占 2 格
-_WIDE_MARKS = {"○", "●", "◇"}
-
 
 def wlen(s: str) -> int:
     """计算终端显示宽度（CJK 字符占 2，其余占 1）。"""
     n = 0
     for c in s:
-        ea = unicodedata.east_asian_width(c)
-        n += 2 if ea in ("F", "W") or c in _WIDE_MARKS else 1
+        n += 2 if unicodedata.east_asian_width(c) in ("F", "W") else 1
     return n
 
 
