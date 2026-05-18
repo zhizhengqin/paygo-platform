@@ -25,6 +25,7 @@ RELAY_LABELS = {
 }
 
 INNER = 28  # 内容区显示宽度
+LABEL_W = 8  # 标签统一显示宽度（4 个中文字）
 
 
 def wlen(s: str) -> int:
@@ -38,6 +39,12 @@ def wlen(s: str) -> int:
 def pad(s: str, width: int) -> str:
     """右填充空格至指定显示宽度。"""
     return s + " " * (width - wlen(s))
+
+
+def row(label: str, value: str) -> str:
+    """生成对齐行：标签对齐 → 冒号 → 值 → 右边框。"""
+    label_pad = label + " " * (LABEL_W - wlen(label))
+    return "║" + pad(f" {label_pad}: {value}", INNER) + "║"
 
 
 def clear_screen():
@@ -55,10 +62,10 @@ def render(state):
     print("╔══════════════════════════════╗")
     print("║" + pad("PAYGO 太阳能控制器", INNER) + "║")
     print("╠══════════════════════════════╣")
-    print("║" + pad(f" 设备:   {device_display}", INNER) + "║")
-    print("║" + pad(f" 状态:   {STATUS_LABELS[status]}", INNER) + "║")
-    print("║" + pad(f" 剩余天数: {days} 天", INNER) + "║")
-    print("║" + pad(f" 继电器: {RELAY_LABELS[status]}", INNER) + "║")
+    print(row("设备", device_display))
+    print(row("状态", STATUS_LABELS[status]))
+    print(row("剩余天数", f"{days} 天"))
+    print(row("继电器", RELAY_LABELS[status]))
     print("╚══════════════════════════════╝")
     print()
 
