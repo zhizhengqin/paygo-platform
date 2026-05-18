@@ -59,6 +59,47 @@ adb shell ls -la /sdcard/controller/
 
 然后在模拟器 Termux 重新执行步骤 2。
 
+**步骤 4：交互式诊断 — Token 已更新但仍提示无效**
+
+控制器界面已显示 `[D]` 选项，说明文件已升级，但输入 Token 仍提示"无效"。此命令可精确定位问题：
+
+```bash
+cd ~/controller && python3 -c "
+from token_codec import generate, decode
+
+# 1. 验证本地算法：用已知 device_id 生成 Token 再解码
+t = generate('SN-KH-001', 30)
+print(f'自生成Token: {t}')
+print(f'解码结果: {decode(t)}')
+print()
+
+# 2. 测试实际从后台获取的 Token
+test = input('粘贴后台生成的完整Token: ').strip()
+print(f'输入长度: {len(test)}  纯数字: {test.isdigit()}')
+print(f'解码结果: {decode(test)}')
+"
+```
+
+**正常输出示例：**
+
+```
+自生成Token: 005430030010574
+解码结果: {'device_id_hash': 543, 'days': 30, 'type': 1}
+
+粘贴后台生成的完整Token: 005430030010574
+输入长度: 15  纯数字: True
+解码结果: {'device_id_hash': 543, 'days': 30, 'type': 1}
+```
+
+**诊断对照表：**
+
+| 现象 | 原因 | 解决 |
+|------|------|------|
+| 自生成 Token 解码正常，但实际 Token 返回 None | 后台与控制器使用了不同的 device_id | 检查后台客户填写的设备编号是否与 Token 编码时一致 |
+| 输入长度不足 15 | 复制时漏了字符 | 重新复制，确保 15 位完整 |
+| 纯数字为 False | 混入了空格或字母 | 手动重新输入 |
+| 自生成 Token 也返回 None | `__pycache__` 缓存了旧 token_codec | `rm -rf ~/controller/__pycache__` |
+
 ---
 
 ## 第 1 步：确认平台服务正在运行且为最新代码
@@ -150,13 +191,22 @@ curl -b /tmp/paygo-cookies.txt -X POST \
 
 ```bash
 cd ~/Desktop/paygo-platform/controller && python3 -c "
-from token_codec import decode
-result = decode('替换为实际15位token')
-print(result)
+from token_codec import generate, decode
+
+# 本地自检
+t = generate('SN-KH-001', 30)
+print(f'自生成Token: {t}')
+print(f'解码结果: {decode(t)}')
+print()
+
+# 验证实际 Token
+test = input('粘贴后台生成的完整Token: ').strip()
+print(f'输入长度: {len(test)}  纯数字: {test.isdigit()}')
+print(f'解码结果: {decode(test)}')
 "
 ```
 
-期望输出 `{'device_id_hash': xxx, 'days': 30, 'type': 1}`。
+期望自生成 Token 解码正常，实际 Token 也返回 `{'device_id_hash': xxx, 'days': 30, 'type': 1}`。
 
 ---
 
