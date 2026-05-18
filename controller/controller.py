@@ -6,7 +6,6 @@ Token 本地解码验证、设备状态管理、天数递减。
 """
 
 import os
-import unicodedata
 
 from token_codec import decode
 from state_manager import load, save, apply_token, tick, reset
@@ -29,10 +28,10 @@ LABEL_W = 8  # 标签统一显示宽度（4 个中文字）
 
 
 def wlen(s: str) -> int:
-    """计算终端显示宽度（CJK 字符占 2，其余占 1）。"""
+    """计算终端显示宽度：ASCII 占 1，其余占 2。"""
     n = 0
     for c in s:
-        n += 2 if unicodedata.east_asian_width(c) in ("F", "W") else 1
+        n += 1 if ord(c) <= 127 else 2
     return n
 
 
