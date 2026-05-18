@@ -19,14 +19,15 @@ def get_customer(customer_id: str) -> dict | None:
     return _customers.get(customer_id)
 
 
-def add_customer(name: str, phone: str, device_id: str) -> str:
+def add_customer(name: str, phone: str, device_id: str, secret_key: str) -> str:
     cid = f"C{str(uuid.uuid4())[:4].upper()}"
     _customers[cid] = {
         "id": cid,
         "name": name,
         "phone": phone,
         "device_id": device_id,
-        "remaining_days": 0,
+        "secret_key": secret_key,
+        "count": 0,
         "status": "locked",
         "created_at": datetime.now().strftime("%Y-%m-%d"),
         "locked_at": None,
@@ -34,8 +35,15 @@ def add_customer(name: str, phone: str, device_id: str) -> str:
     return cid
 
 
+def get_customer_count(customer_id: str) -> int:
+    return _customers[customer_id]["count"]
+
+
+def set_customer_count(customer_id: str, new_count: int) -> None:
+    _customers[customer_id]["count"] = new_count
+
+
 def update_customer_status(customer_id: str, status: str) -> bool:
-    """更新客户状态: active / locked / permanent"""
     if customer_id not in _customers:
         return False
     _customers[customer_id]["status"] = status
@@ -52,7 +60,6 @@ def delete_customer(customer_id: str) -> bool:
 
 
 def reset_db():
-    """Clear all in-memory data. Useful for tests."""
     _customers.clear()
     _tokens.clear()
     _sms_records.clear()
@@ -67,7 +74,7 @@ def get_tokens() -> list:
     return _tokens
 
 
-def add_token(customer_id: str, token: str, days: int) -> str:
+def add_token(customer_id: str, token: str, days: int, count: int) -> str:
     tid = f"T{str(uuid.uuid4())[:4].upper()}"
     now = datetime.now()
     _tokens.append({
@@ -75,6 +82,7 @@ def add_token(customer_id: str, token: str, days: int) -> str:
         "customer_id": customer_id,
         "token": token,
         "days": days,
+        "count": count,
         "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
         "expires_at": (now + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S"),
     })
@@ -86,7 +94,6 @@ def get_payment_rates() -> list[dict]:
 
 
 def get_days_for_amount(amount: float) -> int:
-    """根据金额查询对应天数，未匹配返回 0"""
     for rate in _payment_rates:
         if rate["amount"] == amount:
             return rate["days"]
