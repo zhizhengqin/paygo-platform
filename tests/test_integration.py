@@ -87,4 +87,6 @@ def test_ui_pages_render():
     resp = client.get("/dashboard", cookies={"session": cookie})
     assert resp.status_code == 200
     assert "客户列表" in resp.text
-    assert "生成激活码" in resp.text
+    assert "模拟支付" in resp.text
+    assert "锁定设备" in resp.text
+    assert "永久解锁" in resp.text

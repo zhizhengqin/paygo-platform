@@ -34,7 +34,7 @@
     </div>
     <div class="form-group">
       <label>设备编号</label>
-      <input type="text" id="newDevice" placeholder="如 Solar-001">
+      <input type="text" id="newDevice" placeholder="如 SN-KH-001">
     </div>
     <div class="modal-actions">
       <button class="btn" style="background:#f1f5f9;color:#475569;"
@@ -44,32 +44,52 @@
   </div>
 </div>
 
-<!-- 生成Token弹窗（输入天数） -->
-<div class="modal-overlay" id="tokenDaysModal">
+<!-- 模拟支付弹窗 -->
+<div class="modal-overlay" id="simulatePaymentModal">
   <div class="modal-card">
-    <h3>生成激活码</h3>
-    <p style="color:#64748b;font-size:13px;margin-bottom:16px;"
-       id="tokenCustomerName"></p>
+    <h3>💰 模拟支付</h3>
+    <p style="color:#64748b;font-size:13px;margin-bottom:16px;" id="simulateCustomerName"></p>
     <div class="form-group">
-      <label>使用天数</label>
-      <input type="number" id="tokenDays" value="30" min="1" max="365">
+      <label>支付金额</label>
+      <select id="paymentAmount" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;">
+        <option value="5">$5.00 — 30天</option>
+        <option value="10">$10.00 — 60天</option>
+      </select>
     </div>
     <div class="modal-actions">
       <button class="btn" style="background:#f1f5f9;color:#475569;"
-              onclick="closeModal('tokenDaysModal')">取消</button>
-      <button class="btn btn-primary" onclick="generateToken()">确认生成</button>
+              onclick="closeModal('simulatePaymentModal')">取消</button>
+      <button class="btn btn-primary" onclick="simulatePayment()">确认支付</button>
     </div>
   </div>
 </div>
 
-<!-- Token 结果弹窗 -->
+<!-- Token + SMS 结果弹窗 -->
 <div class="modal-overlay" id="tokenResultModal">
-  <div class="modal-card">
-    <h3>🔑 激活码已生成</h3>
+  <div class="modal-card" style="max-width:420px;">
+    <h3 id="tokenResultTitle">🔑 激活码已生成</h3>
     <div class="token-display" id="tokenCode"></div>
-    <p class="token-hint">请复制此激活码发送给客户<br>有效期 7 天</p>
+    <!-- 短信预览 -->
+    <div class="sms-preview" style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;">
+      <div style="font-size:11px;color:#64748b;margin-bottom:4px;">📱 模拟短信发送</div>
+      <div style="font-size:12px;color:#475569;margin-bottom:4px;">收件人: <strong id="smsTo"></strong></div>
+      <div style="font-size:12px;color:#1e293b;padding:8px;background:#fff;border-radius:6px;line-height:1.5;" id="smsBody"></div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="closeModal('tokenResultModal');selectCustomer(selectedCustomerId);">完成</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认弹窗（锁定/永久解锁复用） -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-card">
+    <h3 id="confirmTitle">确认操作</h3>
+    <p style="color:#64748b;font-size:14px;margin-bottom:20px;" id="confirmMessage"></p>
     <div class="modal-actions">
-      <button class="btn btn-primary" onclick="closeModal('tokenResultModal')">完成</button>
+      <button class="btn" style="background:#f1f5f9;color:#475569;"
+              onclick="closeModal('confirmModal')">取消</button>
+      <button class="btn btn-danger" id="confirmBtn" onclick="">确认</button>
     </div>
   </div>
 </div>
@@ -93,6 +113,12 @@
 let selectedCustomerId = null;
 let deleteTargetId = null;
 
+const STATUS_MAP = {
+  active: '🟢 活跃',
+  locked: '🔴 已锁定',
+  permanent: '⭐ 永久解锁',
+};
+
 async function loadCustomers() {
   const resp = await fetch('/api/customers');
   const customers = await resp.json();
@@ -115,22 +141,54 @@ async function selectCustomer(id) {
   await loadCustomers();
   const resp = await fetch(`/api/customers/${id}`);
   const c = await resp.json();
+
+  // 加载该客户的短信记录
+  const smsResp = await fetch('/api/sms?customer_id=' + encodeURIComponent(id));
+  const smsRecords = await smsResp.json();
+
+  const statusLabel = STATUS_MAP[c.status] || c.status;
+
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-card">
       <h2>👤 ${c.name}</h2>
       <div class="detail-row"><span class="label">电话</span><span class="value">${c.phone}</span></div>
       <div class="detail-row"><span class="label">设备</span><span class="value">${c.device_id}</span></div>
       <div class="detail-row"><span class="label">剩余天数</span><span class="value">${c.remaining_days} 天</span></div>
-      <div class="detail-row"><span class="label">状态</span><span class="value">${c.status === 'active' ? '🟢 活跃' : '🔴 过期'}</span></div>
+      <div class="detail-row"><span class="label">状态</span><span class="value">${statusLabel}</span></div>
       <div class="detail-row"><span class="label">创建日期</span><span class="value">${c.created_at}</span></div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="showTokenModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')">🔑 生成激活码</button>
+
+      <!-- 模拟支付区域 -->
+      <div class="payment-section" style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+        <h4 style="margin:0 0 4px 0;">💰 模拟支付</h4>
+        <p style="color:#64748b;font-size:12px;margin:0 0 12px 0;">模拟客户通过 Bakong 完成还款</p>
+        <button class="btn btn-primary" onclick="showSimulatePaymentModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')">💳 模拟支付</button>
+      </div>
+
+      <!-- 操作按钮组 -->
+      <div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-danger" onclick="showLockConfirm('${c.id}', '${c.name.replace(/'/g, "\\'")}')">🔒 锁定设备</button>
+        <button class="btn" style="background:#f59e0b;color:#fff;" onclick="showPermanentUnlockConfirm('${c.id}', '${c.name.replace(/'/g, "\\'")}')">⭐ 永久解锁</button>
         <button class="btn btn-danger" onclick="showDeleteModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')">删除客户</button>
+      </div>
+
+      <!-- 短信记录 -->
+      <div style="margin-top:20px;">
+        <h4 style="margin:0 0 8px 0;">📱 短信记录</h4>
+        ${smsRecords.length === 0
+          ? '<p style="color:#94a3b8;font-size:12px;">暂无记录</p>'
+          : smsRecords.map(r => `
+            <div style="padding:8px;margin-bottom:6px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;">
+              <div style="font-size:11px;color:#64748b;">收件人: ${r.to} · ${r.sent_at}</div>
+              <div style="font-size:12px;color:#334155;margin-top:4px;">${r.message}</div>
+            </div>
+          `).join('')
+        }
       </div>
     </div>
   `;
 }
 
+// ---- 新增客户 ----
 function showAddCustomerModal() {
   document.getElementById('newName').value = '';
   document.getElementById('newPhone').value = '';
@@ -152,27 +210,65 @@ async function createCustomer() {
   await loadCustomers();
 }
 
-let tokenCustomerId = null;
-function showTokenModal(cid, name) {
-  tokenCustomerId = cid;
-  document.getElementById('tokenCustomerName').textContent = '为客户 ' + name + ' 生成激活码';
-  document.getElementById('tokenDays').value = 30;
-  document.getElementById('tokenDaysModal').classList.add('show');
+// ---- 模拟支付 ----
+let simulateCustomerId = null;
+function showSimulatePaymentModal(cid, name) {
+  simulateCustomerId = cid;
+  document.getElementById('simulateCustomerName').textContent = '为客户 ' + name + ' 模拟一笔支付';
+  document.getElementById('simulatePaymentModal').classList.add('show');
 }
 
-async function generateToken() {
-  const days = parseInt(document.getElementById('tokenDays').value);
-  const resp = await fetch(`/api/customers/${tokenCustomerId}/token`, {
+async function simulatePayment() {
+  const amount = parseFloat(document.getElementById('paymentAmount').value);
+  const resp = await fetch(`/api/customers/${simulateCustomerId}/simulate-payment`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({days})
+    body: JSON.stringify({amount})
   });
   const data = await resp.json();
-  closeModal('tokenDaysModal');
-  document.getElementById('tokenCode').textContent = data.token;
+  closeModal('simulatePaymentModal');
+
+  // 展示结果 + 短信
+  const token = data.token;
+  document.getElementById('tokenResultTitle').textContent = data.days === -1 ? '⭐ 永久解锁码已生成' : '🔑 激活码已生成';
+  document.getElementById('tokenCode').textContent = token.slice(0,5) + ' ' + token.slice(5,9) + ' ' + token.slice(9,11) + ' ' + token.slice(11,15);
+  document.getElementById('smsTo').textContent = data.sms.to;
+  document.getElementById('smsBody').textContent = data.sms.message;
   document.getElementById('tokenResultModal').classList.add('show');
 }
 
+// ---- 锁定设备 ----
+function showLockConfirm(cid, name) {
+  document.getElementById('confirmTitle').textContent = '🔒 锁定设备';
+  document.getElementById('confirmMessage').textContent = '确定要锁定客户 ' + name + ' 的设备吗？锁定后设备将停止供电。';
+  document.getElementById('confirmBtn').onclick = async function() {
+    await fetch(`/api/customers/${cid}/lock`, {method: 'POST'});
+    closeModal('confirmModal');
+    selectCustomer(cid);
+  };
+  document.getElementById('confirmModal').classList.add('show');
+}
+
+// ---- 永久解锁 ----
+function showPermanentUnlockConfirm(cid, name) {
+  document.getElementById('confirmTitle').textContent = '⭐ 永久解锁';
+  document.getElementById('confirmMessage').textContent = '确定要为 ' + name + ' 生成永久解锁 Token 吗？此操作不可撤销。';
+  document.getElementById('confirmBtn').onclick = async function() {
+    const resp = await fetch(`/api/customers/${cid}/permanent-unlock`, {method: 'POST'});
+    const data = await resp.json();
+    closeModal('confirmModal');
+
+    const token = data.token;
+    document.getElementById('tokenResultTitle').textContent = '⭐ 永久解锁码已生成';
+    document.getElementById('tokenCode').textContent = token.slice(0,5) + ' ' + token.slice(5,9) + ' ' + token.slice(9,11) + ' ' + token.slice(11,15);
+    document.getElementById('smsTo').textContent = data.sms.to;
+    document.getElementById('smsBody').textContent = data.sms.message;
+    document.getElementById('tokenResultModal').classList.add('show');
+  };
+  document.getElementById('confirmModal').classList.add('show');
+}
+
+// ---- 删除客户 ----
 function showDeleteModal(cid, name) {
   deleteTargetId = cid;
   document.getElementById('deleteCustomerName').textContent = name;
@@ -189,6 +285,7 @@ async function confirmDelete() {
   await loadCustomers();
 }
 
+// ---- 通用 ----
 function closeModal(id) {
   document.getElementById(id).classList.remove('show');
 }
