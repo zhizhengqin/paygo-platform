@@ -1,8 +1,9 @@
 """测试 Token 引擎（结构化编码版本）。"""
+import pytest
 from app.token_engine import generate_token
 
 
-def test_generate_returns_8_digit_string():
+def test_generate_returns_15_digit_string():
     token = generate_token("Solar-001", 30)
     assert len(token) == 15
     assert token.isdigit()
@@ -80,3 +81,21 @@ class Test15DigitToken:
     def test_days_boundary_3650(self):
         token = generate_token("X", 3650)
         assert token[5:9] == "3650"
+
+    def test_empty_device_id_works(self):
+        token = generate_token("", 30)
+        assert len(token) == 15
+        assert token.isdigit()
+        assert token[:5] == "00000"
+
+    def test_days_zero_raises_valueerror(self):
+        with pytest.raises(ValueError):
+            generate_token("X", 0)
+
+    def test_days_3651_raises_valueerror(self):
+        with pytest.raises(ValueError):
+            generate_token("X", 3651)
+
+    def test_days_negative_raises_valueerror(self):
+        with pytest.raises(ValueError):
+            generate_token("X", -5)
