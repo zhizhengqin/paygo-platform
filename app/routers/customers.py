@@ -11,6 +11,20 @@ from openpaygo import generate_token, TokenType
 router = APIRouter(prefix="/api")
 
 
+@router.get("/utils/generate-secret-key")
+async def generate_secret_key():
+    import secrets
+    return {"secret_key": secrets.token_hex(16)}
+
+
+@router.get("/utils/generate-secret-keys")
+async def generate_secret_keys(count: int = 5):
+    import secrets
+    if count < 1 or count > 20:
+        raise HTTPException(status_code=400, detail="数量范围 1-20")
+    return {"secret_keys": [secrets.token_hex(16) for _ in range(count)]}
+
+
 class CustomerCreate(BaseModel):
     name: str
     phone: str

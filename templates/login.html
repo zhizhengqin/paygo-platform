@@ -1,17 +1,28 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="login-container">
+<div class="login-wrapper">
   <div class="login-card">
-    <h1>☀️ PAYGO Solar</h1>
-    <p class="sub">柬埔寨太阳能设备管理平台</p>
+    <img src="/static/logo.png" alt="Xinhuazhi" class="login-logo">
+    <h1>太阳能即付即用系统</h1>
+    <p class="subtitle">Pay-As-You-Go Solar Management</p>
     {% if error %}
     <p class="error">{{ error }}</p>
     {% endif %}
     <form method="post" action="/login">
-      <input type="text" name="username" placeholder="用户名" required>
-      <input type="password" name="password" placeholder="密码" required>
-      <button type="submit">登 录</button>
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" name="username" placeholder="请输入用户名" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" name="password" placeholder="请输入密码" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login">登 录</button>
     </form>
+    <div class="login-footer">
+      新华智科技（柬埔寨）有限公司<br>
+      Xinhuazhi Technology (Cambodia) Co., Ltd.
+    </div>
   </div>
 </div>
 {% endblock %}

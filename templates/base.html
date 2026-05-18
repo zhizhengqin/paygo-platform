@@ -1,16 +1,22 @@
 <!DOCTYPE html>
-<html lang="km">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PAYGO Solar Platform</title>
+  <title>太阳能即付即用系统</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   {% if request.cookies.get('session') == 'authenticated' %}
   <nav class="navbar">
-    <span>☀️ PAYGO Solar</span>
-    <a href="/logout">退出登录</a>
+    <div class="navbar-brand">
+      <img src="/static/logo.png" alt="Xinhuazhi" class="navbar-logo">
+      <span class="navbar-title">太阳能即付即用系统</span>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-company">新华智科技（柬埔寨）有限公司</span>
+      <a href="/logout">退出</a>
+    </div>
   </nav>
   {% endif %}
   {% block content %}{% endblock %}

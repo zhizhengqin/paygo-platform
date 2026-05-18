@@ -73,7 +73,7 @@ def test_login_flow():
 def test_ui_pages_render():
     resp = client.get("/login")
     assert resp.status_code == 200
-    assert "PAYGO Solar" in resp.text
+    assert "太阳能即付即用系统" in resp.text
     assert "/static/style.css" in resp.text
 
     login_resp = client.post("/login", data={"username": "admin", "password": "admin123"})
