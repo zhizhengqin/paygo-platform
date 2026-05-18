@@ -4,6 +4,9 @@ from app.db import (
 )
 
 
+TEST_KEY = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+
+
 def test_customers_starts_empty():
     reset_db()
     store = get_customers()
@@ -11,13 +14,14 @@ def test_customers_starts_empty():
 
 
 def test_add_and_get_customer():
-    cid = add_customer(name="Sok Heng", phone="0888888001", device_id="Solar-001")
+    cid = add_customer(name="Sok Heng", phone="0888888001", device_id="Solar-001", secret_key=TEST_KEY)
     assert cid.startswith("C")
     customer = get_customer(cid)
     assert customer["name"] == "Sok Heng"
     assert customer["phone"] == "0888888001"
     assert customer["device_id"] == "Solar-001"
-    assert customer["remaining_days"] == 0
+    assert customer["secret_key"] == TEST_KEY
+    assert customer["count"] == 0
     assert customer["status"] == "locked"
 
 
@@ -26,7 +30,7 @@ def test_get_customer_not_found():
 
 
 def test_delete_customer():
-    cid = add_customer(name="Test", phone="000", device_id="D000")
+    cid = add_customer(name="Test", phone="000", device_id="D000", secret_key=TEST_KEY)
     assert delete_customer(cid) is True
     assert get_customer(cid) is None
 
@@ -42,19 +46,20 @@ def test_tokens_starts_empty():
 
 
 def test_add_token():
-    tid = add_token(customer_id="C001", token="12345678", days=30)
+    tid = add_token(customer_id="C001", token="123456789", days=30, count=2)
     assert tid.startswith("T")
     tokens = get_tokens()
     assert len(tokens) == 1
     assert tokens[0]["customer_id"] == "C001"
     assert tokens[0]["days"] == 30
+    assert tokens[0]["count"] == 2
     assert "expires_at" in tokens[0]
 
 
 from app.db import (
     get_payment_rates, get_days_for_amount,
     add_sms_record, get_sms_records,
-    update_customer_status, add_customer as add_customer_new,
+    update_customer_status,
 )
 
 
@@ -100,13 +105,13 @@ class TestSmsRecords:
 class TestCustomerStatus:
     def test_new_customer_defaults_locked(self):
         reset_db()
-        cid = add_customer("Test", "0880000001", "SN-KH-001")
+        cid = add_customer("Test", "0880000001", "SN-KH-001", TEST_KEY)
         c = get_customer(cid)
         assert c["status"] == "locked"
 
     def test_update_status(self):
         reset_db()
-        cid = add_customer("Test", "0880000001", "SN-KH-001")
+        cid = add_customer("Test", "0880000001", "SN-KH-001", TEST_KEY)
         assert update_customer_status(cid, "active")
         assert get_customer(cid)["status"] == "active"
         assert update_customer_status(cid, "permanent")
@@ -114,7 +119,7 @@ class TestCustomerStatus:
 
     def test_lock_sets_locked_at(self):
         reset_db()
-        cid = add_customer("Test", "0880000001", "SN-KH-001")
+        cid = add_customer("Test", "0880000001", "SN-KH-001", TEST_KEY)
         update_customer_status(cid, "locked")
         c = get_customer(cid)
         assert c["locked_at"] is not None
