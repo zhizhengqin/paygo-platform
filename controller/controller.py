@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""PAYGO 太阳能控制器 — 终端模拟脚本 (OpenPAYGO)。"""
-
+"""PAYGO 太阳能控制器 — 终端模拟脚本 (OpenPAYGO + PostgreSQL)。"""
+import asyncio
 import os
 
 from openpaygo import decode_token, TokenType
-from state_manager import (
-    load, save, apply_token, tick, reset,
-    fast_forward,
+from .state_manager import (
+    load, save, apply_token, tick, reset, fast_forward,
 )
 
 STATUS_LABELS = {
@@ -63,19 +62,19 @@ def initial_setup(state):
     key = input("  > ").strip()
     if len(key) == 32 and all(c in "0123456789abcdefABCDEF" for c in key):
         state["secret_key"] = key
-        save(state)
+        asyncio.run(save(state))
         print("  密钥已保存")
     else:
         print("  无效密钥格式")
     input("  按回车键继续…")
 
 
-def main():
-    state = load()
+async def main_async():
+    state = await load()
     while True:
         initial_setup(state)
         render(state)
-        save(state)
+        await save(state)
         cmd = input("> ").strip().upper()
 
         if cmd == "Q":
@@ -83,7 +82,7 @@ def main():
         elif cmd == "R":
             confirm = input("  确认重置？将清除密钥和天数 (y/N): ").strip().upper()
             if confirm == "Y":
-                state = reset()
+                state = await reset()
         elif cmd == "D":
             try:
                 days = int(input("  快进天数: ").strip())
@@ -92,7 +91,7 @@ def main():
                 input("  按回车键继续…")
                 continue
             fast_forward(state, days)
-            save(state)
+            await save(state)
             print(f"  ✓ 已快进 {days} 天 · 剩余 {state['remaining_days']} 天")
             input("  按回车键继续…")
         elif cmd == "N":
@@ -123,7 +122,7 @@ def main():
             else:
                 days = int(value) if value else 0
                 apply_token(state, days, token_type, new_count, used_counts)
-                save(state)
+                await save(state)
 
                 if token_type == TokenType.DISABLE_PAYG:
                     print("  ✓✓ 贷款已结清 · 设备永久解锁")
@@ -132,6 +131,10 @@ def main():
                 input("  按回车键继续…")
 
     print("控制器已退出。")
+
+
+def main():
+    asyncio.run(main_async())
 
 
 if __name__ == "__main__":
