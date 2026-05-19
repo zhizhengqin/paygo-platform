@@ -1,0 +1,158 @@
+"""Async 数据访问层 — 所有 CRUD 操作替换原 db.py 的内存 dict 实现。"""
+from datetime import datetime, timedelta
+
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import Customer, Token, PaymentRate, SmsRecord, _new_id
+
+
+# ---- Customers ----
+
+async def get_customers(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(Customer).order_by(Customer.created_at.desc()))
+    return [_customer_to_dict(c) for c in result.scalars().all()]
+
+
+async def get_customer(db: AsyncSession, customer_id: str) -> dict | None:
+    c = await db.get(Customer, customer_id)
+    return _customer_to_dict(c) if c else None
+
+
+async def add_customer(db: AsyncSession, name: str, phone: str,
+                       device_id: str, secret_key: str) -> str:
+    cid = _new_id("C")
+    c = Customer(id=cid, name=name, phone=phone, device_id=device_id, secret_key=secret_key)
+    db.add(c)
+    await db.commit()
+    return cid
+
+
+async def delete_customer(db: AsyncSession, customer_id: str) -> bool:
+    c = await db.get(Customer, customer_id)
+    if c is None:
+        return False
+    await db.delete(c)
+    await db.commit()
+    return True
+
+
+async def update_customer_status(db: AsyncSession, customer_id: str, status: str) -> bool:
+    c = await db.get(Customer, customer_id)
+    if c is None:
+        return False
+    c.status = status
+    if status == "locked":
+        c.locked_at = datetime.now()
+    await db.commit()
+    return True
+
+
+async def set_customer_count(db: AsyncSession, customer_id: str, new_count: int):
+    c = await db.get(Customer, customer_id)
+    if c:
+        c.count = new_count
+        await db.commit()
+
+
+# ---- Tokens ----
+
+async def get_tokens(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(Token).order_by(Token.generated_at.desc()))
+    return [_token_to_dict(t) for t in result.scalars().all()]
+
+
+async def add_token(db: AsyncSession, customer_id: str, token: str,
+                    days: int, count: int) -> str:
+    tid = _new_id("T")
+    t = Token(
+        id=tid, customer_id=customer_id, token=token, days=days, count=count,
+        generated_at=datetime.now(), expires_at=datetime.now() + timedelta(days=7),
+    )
+    db.add(t)
+    await db.commit()
+    return tid
+
+
+# ---- Payment Rates ----
+
+async def get_payment_rates(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(PaymentRate).order_by(PaymentRate.amount))
+    return [{"amount": float(r.amount), "days": r.days} for r in result.scalars().all()]
+
+
+async def get_days_for_amount(db: AsyncSession, amount: float) -> int:
+    result = await db.execute(
+        select(PaymentRate.days).where(PaymentRate.amount == amount)
+    )
+    days = result.scalar()
+    return days if days is not None else 0
+
+
+async def seed_payment_rates(db: AsyncSession):
+    """初始化支付汇率，已存在则跳过。"""
+    existing = await db.execute(select(func.count()).select_from(PaymentRate))
+    if existing.scalar() > 0:
+        return
+    db.add_all([
+        PaymentRate(amount=5, days=30),
+        PaymentRate(amount=10, days=60),
+    ])
+    await db.commit()
+
+
+# ---- SMS Records ----
+
+async def add_sms_record(db: AsyncSession, customer_id: str, to_phone: str,
+                         message: str) -> str:
+    sid = _new_id("S")
+    r = SmsRecord(id=sid, customer_id=customer_id, to_phone=to_phone, message=message)
+    db.add(r)
+    await db.commit()
+    return sid
+
+
+async def get_sms_records(db: AsyncSession, customer_id: str = None) -> list[dict]:
+    stmt = select(SmsRecord).order_by(SmsRecord.sent_at.desc())
+    if customer_id:
+        stmt = stmt.where(SmsRecord.customer_id == customer_id)
+    result = await db.execute(stmt)
+    return [_sms_to_dict(r) for r in result.scalars().all()]
+
+
+# ---- Serialization helpers ----
+
+def _customer_to_dict(c: Customer) -> dict:
+    return {
+        "id": c.id,
+        "name": c.name,
+        "phone": c.phone,
+        "device_id": c.device_id,
+        "secret_key": c.secret_key,
+        "count": c.count,
+        "status": c.status,
+        "created_at": c.created_at.strftime("%Y-%m-%d") if c.created_at else None,
+        "locked_at": c.locked_at.strftime("%Y-%m-%d %H:%M:%S") if c.locked_at else None,
+    }
+
+
+def _token_to_dict(t: Token) -> dict:
+    return {
+        "id": t.id,
+        "customer_id": t.customer_id,
+        "token": t.token,
+        "days": t.days,
+        "count": t.count,
+        "generated_at": t.generated_at.strftime("%Y-%m-%d %H:%M:%S") if t.generated_at else None,
+        "expires_at": t.expires_at.strftime("%Y-%m-%d %H:%M:%S") if t.expires_at else None,
+    }
+
+
+def _sms_to_dict(r: SmsRecord) -> dict:
+    return {
+        "id": r.id,
+        "customer_id": r.customer_id,
+        "to_phone": r.to_phone,
+        "message": r.message,
+        "sent_at": r.sent_at.strftime("%Y-%m-%d %H:%M:%S") if r.sent_at else None,
+    }
