@@ -1,0 +1,37 @@
+# Python
+venv/
+.venv/
+.venv-1/
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test & Dev
+tests/
+.pytest_cache/
+cookies.txt
+*.log
+
+# Docs (不需要打入镜像)
+docs/
+*.md
+!README.md
+
+# Misc
+.DS_Store
+.env
+.env.local
+deploy/.env

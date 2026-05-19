@@ -1,0 +1,89 @@
+services:
+  # ── FastAPI 应用 ──
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: paygo-app:latest
+    container_name: paygo-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://paygo_user:${DB_PASSWORD}@postgres:5432/paygo_platform
+      REDIS_URL: redis://redis:6379/0
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-20}
+      CACHE_TTL_API: ${CACHE_TTL_API:-60}
+      SESSION_TTL: ${SESSION_TTL:-1800}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ── PostgreSQL 15 ──
+  postgres:
+    image: postgres:15-alpine
+    container_name: paygo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: paygo_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: paygo_platform
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paygo_user -d paygo_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
+
+  # ── Redis 8 ──
+  redis:
+    image: redis:8-alpine
+    container_name: paygo-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - internal
+
+  # ── Caddy 反向代理 + 自动 SSL ──
+  caddy:
+    image: caddy:2-alpine
+    container_name: paygo-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    networks:
+      - internal
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:
+
+networks:
+  internal:
+    driver: bridge

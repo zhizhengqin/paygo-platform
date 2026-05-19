@@ -3,11 +3,40 @@
 ## 1. 环境要求
 
 - Python 3.10+
-- PostgreSQL 15+（已安装并运行）
-- Redis 7+（已安装并运行）
+- PostgreSQL 15+
+- Redis 8+
 - pip
 
-### 1.1 数据库初始化（首次）
+### 1.1 安装并启动 PostgreSQL 和 Redis
+
+本项目开发环境使用 **Homebrew** 安装并注册为系统服务（登录自动启动，无需手动干预）。
+
+```bash
+# 安装
+brew install postgresql@15 redis
+
+# 注册为系统服务（登录自动启动）
+brew services start postgresql@15
+brew services start redis
+
+# 验证运行状态
+brew services list | grep -E "postgresql|redis"
+# 预期输出：postgresql@15 started ... / redis started ...
+```
+
+如果不想注册为系统服务，也可以手动启动：
+
+```bash
+# 手动启动（前台，Ctrl+C 停止）
+postgres -D /opt/homebrew/var/postgresql@15 &
+redis-server &
+
+# 或后台运行
+brew services run postgresql@15
+brew services run redis
+```
+
+### 1.2 数据库初始化（首次）
 
 ```bash
 # 创建数据库和用户（使用 postgres 超级用户）
@@ -97,7 +126,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -197,16 +226,16 @@ WantedBy=multi-user.target
 ```bash
 source venv/bin/activate
 
-# 运行全部测试（105 个）
+# 运行全部测试（109 个）
 pytest tests/ -v
 
 # 按模块运行
 pytest tests/test_models.py -v          # ORM 模型 (8 tests)
 pytest tests/test_database.py -v        # 数据库连接池 (3 tests)
 pytest tests/test_redis_client.py -v    # Redis 客户端 (10 tests)
-pytest tests/test_store.py -v           # 数据访问层 (18 tests)
+pytest tests/test_store.py -v           # 数据访问层 (20 tests)
 pytest tests/test_auth.py -v            # 认证 (6 tests)
-pytest tests/test_customers_api.py -v   # 客户API (20 tests)
+pytest tests/test_customers_api.py -v   # 客户API (22 tests)
 pytest tests/test_state_manager.py -v   # 状态机 (19 tests)
 pytest tests/test_config_api.py -v      # 支付汇率 (2 tests)
 pytest tests/test_controller_integration.py -v # 控制器集成 (4 tests)
@@ -617,7 +646,7 @@ psql -U paygo_user -d paygo_platform -c \
 
 ## 12. Token 编码格式（OpenPAYGO 标准）
 
-本项目采用 [OpenPAYGO](https://github.com/EnAccess/OpenPAYGO-python) 开源标准（v0.6.3），Token 为 **9 位纯数字**。
+本项目采用 [OpenPAYGO](https://github.com/EnAccess/OpenPAYGO-python) 开源标准（>=0.6.3），Token 为 **9 位纯数字**。
 
 ### 核心机制
 
@@ -674,7 +703,8 @@ paygo-platform/
 │   ├── controller.py        # 终端 UI（9位Token输入/密钥绑定/count显示）
 │   └── state_manager.py     # 状态机 + PostgreSQL 持久化
 ├── static/
-│   └── style.css            # 全局样式（绿色主题 #059669）
+│   ├── style.css            # 全局样式（绿色主题 #059669）
+│   └── logo.png             # 平台 Logo
 ├── templates/
 │   ├── base.html            # 基础布局
 │   ├── login.html           # 登录页
@@ -692,10 +722,16 @@ paygo-platform/
 │   ├── test_controller_integration.py  # 控制器集成
 │   ├── test_integration.py      # 端到端集成
 │   └── test_upgrade.py          # 五场景 MFI 演示
-└── docs/
-    └── superpowers/
-        ├── specs/            # 设计文档
-        └── plans/            # 实施计划
+├── docs/
+│   ├── debug-controller.md
+│   ├── controller-redeploy.md
+│   └── superpowers/
+│       ├── specs/              # 设计文档
+│       └── plans/              # 实施计划
+├── CLAUDE.md                   # AI 上下文文档
+├── AGENTS.md                   # 代理角色定义
+├── cookies.txt
+└── .superpowers/               # Superpowers 框架配置
 ```
 
 ---
@@ -710,7 +746,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 
 # ─── 2. 运行测试（确保一切正常） ───
 pytest tests/ -v
-# 预期: 105 passed
+# 预期: 109 passed
 
 # ─── 3. 登录并创建客户 ───
 # 登录（获取 session cookie）
