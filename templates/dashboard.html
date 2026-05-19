@@ -130,6 +130,28 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// ---- Tab 切换 ----
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  const layout = document.querySelector('.main-layout');
+  if (tab === 'dashboard') {
+    layout.classList.add('sidebar-hidden');
+    showDashboard();
+  } else if (tab === 'customers') {
+    layout.classList.remove('sidebar-hidden');
+    selectedCustomerId = null;
+    loadCustomers();
+    document.getElementById('detailPanel').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">☀</div>
+        <p>选择左侧客户查看详情</p>
+      </div>
+    `;
+  }
+}
+
 let selectedCustomerId = null;
 let deleteTargetId = null;
 
@@ -314,6 +336,10 @@ async function loadCustomers() {
 // ---- 客户详情 ----
 async function selectCustomer(id) {
   selectedCustomerId = id;
+  document.querySelectorAll('.nav-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === 'customers');
+  });
+  document.querySelector('.main-layout').classList.remove('sidebar-hidden');
   await loadCustomers();
   const resp = await fetch(`/api/customers/${id}`);
   const c = await resp.json();
@@ -484,5 +510,6 @@ function closeModal(id) {
 }
 
 showDashboard();
+document.querySelector('.main-layout').classList.add('sidebar-hidden');
 </script>
 {% endblock %}
