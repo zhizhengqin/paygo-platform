@@ -222,17 +222,16 @@ async def get_dashboard_stats(db: AsyncSession) -> dict:
     total_tokens = token_count_result.scalar() or 0
 
     recent_result = await db.execute(
-        select(Token).order_by(Token.generated_at.desc()).limit(20)
+        select(Token, Customer.name)
+        .join(Customer, Token.customer_id == Customer.id, isouter=True)
+        .order_by(Token.generated_at.desc())
+        .limit(20)
     )
     recent_transactions = []
-    for t in recent_result.scalars().all():
-        customer_result = await db.execute(
-            select(Customer.name).where(Customer.id == t.customer_id)
-        )
-        customer_name = customer_result.scalar() or "-"
+    for t, customer_name in recent_result.all():
         recent_transactions.append({
             "id": t.id,
-            "customer_name": customer_name,
+            "customer_name": customer_name or "-",
             "amount": float(t.amount) if t.amount else 0,
             "days": t.days,
             "token": t.token,

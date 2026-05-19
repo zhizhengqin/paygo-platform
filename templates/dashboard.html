@@ -4,7 +4,7 @@
   <!-- 左侧面板 -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h3>客户列表</h3>
+      <h3 onclick="showDashboard()" style="cursor:pointer;">客户列表</h3>
       <span class="badge" id="customerCount">0</span>
       <button class="btn btn-primary btn-sm" onclick="showAddCustomerModal()">+ 新增</button>
     </div>
@@ -174,6 +174,108 @@ function copyKey(key, btn) {
     btn.classList.add('copied');
     setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
   }).catch(() => { showToast('复制失败，请手动选择'); });
+}
+
+// ---- 仪表盘首页 ----
+async function showDashboard() {
+  selectedCustomerId = null;
+  await loadCustomers();
+  const resp = await fetch('/api/dashboard/stats');
+  const stats = await resp.json();
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div id="dashboardHome">
+      <div class="dash-header">
+        <h2>运营仪表盘</h2>
+        <span class="dash-date" id="dashDate"></span>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-value">${stats.total_customers}</div>
+          <div class="kpi-label">总客户数</div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-value">${stats.active_devices}</div>
+          <div class="kpi-label">活跃设备</div>
+        </div>
+        <div class="kpi-card kpi-gold">
+          <div class="kpi-value">$${stats.monthly_revenue.toFixed(2)}</div>
+          <div class="kpi-label">本月收入 (USD)</div>
+        </div>
+        <div class="kpi-card kpi-red">
+          <div class="kpi-value">${stats.locked_devices}</div>
+          <div class="kpi-label">逾期锁定</div>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-chart-box">
+          <h4>设备状态分布</h4>
+          <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+        </div>
+        <div class="dash-table-box">
+          <h4>最近交易</h4>
+          <table class="tx-table" id="txTable">
+            <thead><tr><th>时间</th><th>客户</th><th>金额</th><th>天数</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('dashDate').textContent =
+    new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric'});
+
+  renderStatusChart(stats);
+  renderTxTable(stats.recent_transactions);
+}
+
+function renderStatusChart(stats) {
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  // 全部为0时显示空状态
+  const data = [stats.active_devices, stats.locked_devices, stats.permanent_devices];
+  if (data.every(d => d === 0)) {
+    data[0] = 1; // 占位，避免 Chart.js 报错
+  }
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['活跃', '已锁定', '永久解锁'],
+      datasets: [{
+        data: data,
+        backgroundColor: ['#059669', '#dc2626', '#f59e0b'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10 }
+        }
+      }
+    }
+  });
+}
+
+function renderTxTable(transactions) {
+  const tbody = document.querySelector('#txTable tbody');
+  if (!transactions || transactions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:24px;">暂无交易记录</td></tr>';
+    return;
+  }
+  tbody.innerHTML = transactions.map(t => `
+    <tr>
+      <td>${t.generated_at || '-'}</td>
+      <td>${t.customer_name}</td>
+      <td>$${t.amount.toFixed(2)}</td>
+      <td>${t.days === -1 ? '永久' : t.days + '天'}</td>
+    </tr>
+  `).join('');
 }
 
 // ---- 客户列表 ----
@@ -367,6 +469,6 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('show');
 }
 
-loadCustomers();
+showDashboard();
 </script>
 {% endblock %}
