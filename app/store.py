@@ -184,3 +184,67 @@ def _sms_to_dict(r: SmsRecord) -> dict:
         "message": r.message,
         "sent_at": r.sent_at.strftime("%Y-%m-%d %H:%M:%S") if r.sent_at else None,
     }
+
+
+async def get_dashboard_stats(db: AsyncSession) -> dict:
+    from datetime import datetime
+
+    total_result = await db.execute(select(func.count()).select_from(Customer))
+    total_customers = total_result.scalar() or 0
+
+    active_result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.status == "active")
+    )
+    active_devices = active_result.scalar() or 0
+
+    locked_result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.status == "locked")
+    )
+    locked_devices = locked_result.scalar() or 0
+
+    permanent_result = await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.status == "permanent")
+    )
+    permanent_devices = permanent_result.scalar() or 0
+
+    now = datetime.now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    revenue_result = await db.execute(
+        select(func.coalesce(func.sum(Token.amount), 0)).where(
+            Token.generated_at >= month_start
+        )
+    )
+    monthly_revenue = float(revenue_result.scalar() or 0)
+
+    token_count_result = await db.execute(
+        select(func.count()).select_from(Token).where(Token.generated_at >= month_start)
+    )
+    total_tokens = token_count_result.scalar() or 0
+
+    recent_result = await db.execute(
+        select(Token).order_by(Token.generated_at.desc()).limit(20)
+    )
+    recent_transactions = []
+    for t in recent_result.scalars().all():
+        customer_result = await db.execute(
+            select(Customer.name).where(Customer.id == t.customer_id)
+        )
+        customer_name = customer_result.scalar() or "-"
+        recent_transactions.append({
+            "id": t.id,
+            "customer_name": customer_name,
+            "amount": float(t.amount) if t.amount else 0,
+            "days": t.days,
+            "token": t.token,
+            "generated_at": t.generated_at.strftime("%Y-%m-%d %H:%M:%S") if t.generated_at else None,
+        })
+
+    return {
+        "total_customers": total_customers,
+        "active_devices": active_devices,
+        "locked_devices": locked_devices,
+        "permanent_devices": permanent_devices,
+        "monthly_revenue": monthly_revenue,
+        "total_tokens": total_tokens,
+        "recent_transactions": recent_transactions,
+    }

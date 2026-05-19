@@ -12,6 +12,7 @@ from app.store import seed_payment_rates
 from app.routers.auth import router as auth_router
 from app.routers.customers import router as customers_router
 from app.routers.config import router as config_router
+from app.routers.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
@@ -43,6 +44,7 @@ templates = Jinja2Templates(directory="templates")
 app.include_router(auth_router)
 app.include_router(customers_router)
 app.include_router(config_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/dashboard")
