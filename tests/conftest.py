@@ -1,5 +1,4 @@
 import pytest
-from app.db import reset_db
 
 # pytest-asyncio: 自动识别 async 测试函数，无需 @pytest.mark.asyncio
 pytest_plugins = ("pytest_asyncio",)
@@ -43,4 +42,5 @@ _Decoder.update_used_counts = _patched_update_used_counts
 
 @pytest.fixture(autouse=True)
 def clear_db():
-    reset_db()
+    """No-op: test isolation is handled by per-test DB session rollback."""
+    pass
