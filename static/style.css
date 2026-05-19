@@ -241,7 +241,7 @@ body {
 /* ── Main Layout ── */
 .main-layout {
   display: flex;
-  height: calc(100vh - 56px);
+  height: calc(100vh - 100px); /* navbar 56px + nav-tabs 44px */
 }
 
 /* ── Sidebar ── */
