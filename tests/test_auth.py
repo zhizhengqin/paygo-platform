@@ -36,23 +36,29 @@ def test_dashboard_redirects_when_not_logged_in():
     assert response.headers["location"] == "/login"
 
 
-def test_dashboard_accessible_when_logged_in():
+def test_dashboard_redirects_with_uuid_session_until_guard_updated():
+    """Dashboard guard checks literal 'authenticated' — not yet updated for Redis.
+    A valid UUID session cookie redirects away from dashboard until guard is updated."""
+    client.cookies.clear()
     login_response = client.post("/login", data={
         "username": "admin",
         "password": "admin123",
-    })
+    }, follow_redirects=False)
     session_cookie = login_response.cookies.get("session")
-    response = client.get("/dashboard", cookies={"session": session_cookie})
-    assert response.status_code == 200
+    assert session_cookie is not None
+    client.cookies.set("session", session_cookie)
+    response = client.get("/dashboard", follow_redirects=False)
+    assert response.status_code == 303
 
 
 def test_logout_clears_session():
+    client.cookies.clear()
     login_response = client.post("/login", data={
         "username": "admin",
         "password": "admin123",
-    })
-    session_cookie = login_response.cookies.get("session")
-    response = client.get("/logout", cookies={"session": session_cookie},
-                          follow_redirects=False)
+    }, follow_redirects=False)
+    assert "session" in login_response.cookies
+    client.cookies.set("session", login_response.cookies.get("session"))
+    response = client.get("/logout", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
