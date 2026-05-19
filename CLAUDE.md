@@ -30,10 +30,10 @@
 - 后端框架：Python FastAPI
 - 前端：Jinja2 模板 + 纯 CSS（绿色主题 #059669）
 - 数据库：PostgreSQL 15（SQLAlchemy 2.0 async + asyncpg 驱动）
-- 缓存：Redis 7（session 管理 + API 响应缓存 + Token 防重放）
-- Token 生成：OpenPAYGO 标准 v0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
+- 缓存：Redis 8（session 管理 + API 响应缓存 + Token 防重放）
+- Token 生成：OpenPAYGO 标准 >=0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
 - ORM：SQLAlchemy 2.0 async，5 张表（customers, tokens, sms_records, payment_rates, device_states）
-- 测试：pytest-asyncio，105 个测试，真实测试数据库隔离
+- 测试：pytest-asyncio，109 个测试，真实测试数据库隔离
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现
@@ -63,7 +63,9 @@ paygo-platform/
 │   ├── controller.py        # 终端 UI（9位Token输入/密钥绑定/count显示）
 │   └── state_manager.py     # 状态机 + PostgreSQL 持久化
 ├── static/
-│   └── style.css            # 全局样式（绿色主题 #059669）
+│   ├── __init__.py
+│   ├── style.css            # 全局样式（绿色主题 #059669）
+│   └── logo.png             # 平台 Logo
 ├── templates/
 │   ├── base.html            # 布局框架
 │   ├── login.html           # 登录页
@@ -73,27 +75,31 @@ paygo-platform/
 │   ├── test_models.py       # ORM 模型 (8 tests)
 │   ├── test_database.py     # 数据库连接池 (3 tests)
 │   ├── test_redis_client.py # Redis 客户端 (10 tests)
-│   ├── test_store.py        # 数据访问层 (18 tests)
+│   ├── test_store.py        # 数据访问层 (20 tests)
 │   ├── test_auth.py         # 认证 (6 tests)
-│   ├── test_customers_api.py# 客户API (20 tests)
+│   ├── test_customers_api.py# 客户API (22 tests)
 │   ├── test_state_manager.py# 状态机 (19 tests)
 │   ├── test_config_api.py   # 支付汇率 (2 tests)
 │   ├── test_controller_integration.py  # 控制器集成 (4 tests)
 │   ├── test_integration.py  # 端到端集成 (6 tests)
 │   └── test_upgrade.py      # 五场景 MFI 演示 (9 tests)
 ├── docs/
+│   ├── debug-controller.md
+│   ├── controller-redeploy.md
 │   └── superpowers/
 │       ├── specs/           # 设计文档
 │       └── plans/           # 实施计划
 ├── requirements.txt
 ├── README.md
 ├── CLAUDE.md                # 本文件
-└── AGENTS.md                # 代理角色定义
+├── AGENTS.md                # 代理角色定义
+├── cookies.txt
+└── .superpowers/            # Superpowers 框架配置
 ```
 
 ## 开发规范
 - 强制TDD：每个功能必须先有失败的测试，再写实现代码
-- 代码注释使用中文
+- 代码注释使用中文（部分英文标签）
 - 所有API接口使用 `/api/` 前缀
 - 认证方式：单一管理员账号 + session cookie
 - 每次变更后运行全部测试验证
@@ -101,14 +107,14 @@ paygo-platform/
 
 ## 启动命令
 ```bash
-# 前置依赖：确保 PostgreSQL 15 和 Redis 7 已运行
+# 前置依赖：确保 PostgreSQL 15 和 Redis 8 已运行
 # PostgreSQL 数据库：paygo_platform，用户：paygo_user
 # Redis：localhost:6379
 
 # 开发环境启动
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 运行所有测试（105 个）
+# 运行所有测试（109 个）
 pytest tests/ -v
 
 # 运行单个测试文件
@@ -118,16 +124,16 @@ pytest tests/test_store.py -v
 pytest tests/test_models.py -v          # ORM 模型 (8 tests)
 pytest tests/test_database.py -v        # 连接池 (3 tests)
 pytest tests/test_redis_client.py -v    # Redis (10 tests)
-pytest tests/test_store.py -v           # 数据访问层 (18 tests)
+pytest tests/test_store.py -v           # 数据访问层 (20 tests)
 pytest tests/test_auth.py -v            # 认证 (6 tests)
-pytest tests/test_customers_api.py -v   # 客户API (20 tests)
+pytest tests/test_customers_api.py -v   # 客户API (22 tests)
 pytest tests/test_state_manager.py -v   # 状态机 (19 tests)
 pytest tests/test_config_api.py -v      # 支付汇率 (2 tests)
 pytest tests/test_integration.py -v     # 集成 (6 tests)
 pytest tests/test_upgrade.py -v         # 五场景 (9 tests)
 
-# 控制器终端
-cd controller && python controller.py
+# 控制器终端（需先激活 venv）
+source venv/bin/activate && cd controller && python controller.py
 
 # 访问API文档
 http://localhost:8000/docs
