@@ -1,8 +1,18 @@
 """集成测试 — 端到端流程验证 (async + PostgreSQL + Redis)。"""
+import secrets
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
+
+
+def _key() -> str:
+    return secrets.token_hex(16)
+
+
+def _device_id() -> str:
+    return f"DEV-{secrets.token_hex(3)}"
 
 
 @pytest.fixture(autouse=True)
@@ -37,8 +47,8 @@ class TestFullUserFlow:
         resp = await client.post("/api/customers", json={
             "name": "Sok Heng",
             "phone": "0888888001",
-            "device_id": "Solar-001",
-            "secret_key": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         assert resp.status_code == 200
         cid = resp.json()["id"]

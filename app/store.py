@@ -7,6 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Customer, Token, PaymentRate, SmsRecord, _new_id
 
 
+class DuplicateDeviceError(Exception):
+    def __init__(self, device_id: str):
+        self.device_id = device_id
+        super().__init__(f"device_id '{device_id}' already exists")
+
+
+class DuplicateSecretKeyError(Exception):
+    def __init__(self, secret_key: str):
+        self.secret_key = secret_key
+        super().__init__(f"secret_key already bound to another device")
+
+
 # ---- Customers ----
 
 async def get_customers(db: AsyncSession) -> list[dict]:
@@ -21,6 +33,20 @@ async def get_customer(db: AsyncSession, customer_id: str) -> dict | None:
 
 async def add_customer(db: AsyncSession, name: str, phone: str,
                        device_id: str, secret_key: str) -> str:
+    # 检查 device_id 唯一性
+    existing = await db.execute(
+        select(Customer).where(Customer.device_id == device_id)
+    )
+    if existing.scalar():
+        raise DuplicateDeviceError(device_id)
+
+    # 检查 secret_key 唯一绑定
+    existing = await db.execute(
+        select(Customer).where(Customer.secret_key == secret_key)
+    )
+    if existing.scalar():
+        raise DuplicateSecretKeyError(secret_key)
+
     cid = _new_id("C")
     c = Customer(id=cid, name=name, phone=phone, device_id=device_id, secret_key=secret_key)
     db.add(c)

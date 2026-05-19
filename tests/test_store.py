@@ -1,4 +1,6 @@
 """store.py 测试 — 所有 async 数据访问函数，操作测试数据库。"""
+import secrets
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy import select
@@ -14,7 +16,13 @@ from app.store import (
     seed_payment_rates,
 )
 
-TEST_KEY = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+
+def _key() -> str:
+    """生成唯一密钥，避免测试间冲突。"""
+    return secrets.token_hex(16)
+
+
+TEST_KEY = _key()  # 向后兼容
 
 
 @pytest.fixture(scope="function")
@@ -62,8 +70,8 @@ class TestCustomers:
         assert result is None
 
     async def test_get_customers_list(self, session):
-        await add_customer(session, "A", "1", "D1", TEST_KEY)
-        await add_customer(session, "B", "2", "D2", TEST_KEY)
+        await add_customer(session, "A", "1", "D1", _key())
+        await add_customer(session, "B", "2", "D2", _key())
         result = await get_customers(session)
         assert len(result) == 2
 
@@ -98,6 +106,20 @@ class TestCustomers:
         await set_customer_count(session, cid, 5)
         c = await get_customer(session, cid)
         assert c["count"] == 5
+
+    async def test_duplicate_device_id_rejected(self, session):
+        await add_customer(session, "A", "1", "D1", TEST_KEY)
+        from app.store import DuplicateDeviceError
+        with pytest.raises(DuplicateDeviceError) as exc:
+            await add_customer(session, "B", "2", "D1",
+                               "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7")
+        assert "D1" in str(exc.value)
+
+    async def test_duplicate_secret_key_rejected(self, session):
+        await add_customer(session, "A", "1", "D1", TEST_KEY)
+        from app.store import DuplicateSecretKeyError
+        with pytest.raises(DuplicateSecretKeyError):
+            await add_customer(session, "B", "2", "D2", TEST_KEY)
 
 
 class TestTokens:
@@ -158,8 +180,8 @@ class TestSmsRecords:
         assert records[0]["message"] == "Test message"
 
     async def test_get_all_sms(self, session):
-        cid1 = await add_customer(session, "A", "1", "D1", TEST_KEY)
-        cid2 = await add_customer(session, "B", "2", "D2", TEST_KEY)
+        cid1 = await add_customer(session, "A", "1", "D1", _key())
+        cid2 = await add_customer(session, "B", "2", "D2", _key())
         await add_sms_record(session, cid1, "0888888001", "msg1")
         await add_sms_record(session, cid2, "0888888002", "msg2")
         records = await get_sms_records(session)

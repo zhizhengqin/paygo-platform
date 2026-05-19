@@ -9,6 +9,7 @@ from app.store import (
     set_customer_count, update_customer_status,
     get_tokens, add_token,
     add_sms_record, get_sms_records, get_days_for_amount,
+    DuplicateDeviceError, DuplicateSecretKeyError,
 )
 from app.redis import cache_get, cache_set, cache_delete, session_get
 from openpaygo import generate_token, TokenType
@@ -88,10 +89,21 @@ async def create_customer(request: Request, body: CustomerCreate,
                           db: AsyncSession = Depends(get_db)):
     await _check_auth(request)
     _validate_secret_key(body.secret_key)
-    cid = await store_add_customer(
-        db, name=body.name, phone=body.phone,
-        device_id=body.device_id, secret_key=body.secret_key,
-    )
+    try:
+        cid = await store_add_customer(
+            db, name=body.name, phone=body.phone,
+            device_id=body.device_id, secret_key=body.secret_key,
+        )
+    except DuplicateDeviceError:
+        raise HTTPException(
+            status_code=409,
+            detail=f"设备编号 '{body.device_id}' 已被其他客户使用",
+        )
+    except DuplicateSecretKeyError:
+        raise HTTPException(
+            status_code=409,
+            detail="该密钥已绑定到其他设备",
+        )
     await cache_delete("customers:*")
     customer = await store_get_customer(db, cid)
     return customer

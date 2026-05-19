@@ -1,4 +1,6 @@
 """升级集成测试：覆盖 5 个 MFI 演示场景 (OpenPAYGO + PostgreSQL 版本)。"""
+import secrets
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -7,7 +9,12 @@ from openpaygo import decode_token, TokenType
 from controller.state_manager import apply_token, fast_forward
 
 
-TEST_KEY = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+def _key() -> str:
+    return secrets.token_hex(16)
+
+
+def _device_id() -> str:
+    return f"DEV-{secrets.token_hex(3)}"
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +42,11 @@ async def _login(client):
 
 
 async def _create_customer(client, name="Sok Heng", phone="0888888001",
-                          device_id="SN-KH-001", secret_key=TEST_KEY):
+                          device_id=None, secret_key=None):
+    if device_id is None:
+        device_id = _device_id()
+    if secret_key is None:
+        secret_key = _key()
     resp = await client.post("/api/customers", json={
         "name": name, "phone": phone,
         "device_id": device_id, "secret_key": secret_key,
@@ -45,8 +56,9 @@ async def _create_customer(client, name="Sok Heng", phone="0888888001",
 
 class TestScene1FirstPayment:
     async def test_scene1_full_flow(self, client):
+        key = _key()
         sid = await _login(client)
-        cid = await _create_customer(client)
+        cid = await _create_customer(client, secret_key=key)
 
         resp = await client.post(
             f"/api/customers/{cid}/simulate-payment",
@@ -60,14 +72,14 @@ class TestScene1FirstPayment:
         assert "sms" in data
 
         value, token_type, new_count, used_counts = decode_token(
-            token=token, secret_key=TEST_KEY, count=0,
+            token=token, secret_key=key, count=0,
         )
         assert token_type == TokenType.ADD_TIME
         assert int(value) == 30
 
         state = {
             "device_id": "test-1",
-            "secret_key": TEST_KEY,
+            "secret_key": key,
             "count": 0,
             "used_counts": [],
             "remaining_days": 0,
@@ -81,8 +93,9 @@ class TestScene1FirstPayment:
 
 class TestScene2Renewal:
     async def test_scene2_days_stack(self, client):
+        key = _key()
         sid = await _login(client)
-        cid = await _create_customer(client)
+        cid = await _create_customer(client, secret_key=key)
 
         resp1 = await client.post(
             f"/api/customers/{cid}/simulate-payment",
@@ -90,11 +103,11 @@ class TestScene2Renewal:
         )
         token1 = resp1.json()["token"]
         value1, type1, count1, used1 = decode_token(
-            token=token1, secret_key=TEST_KEY, count=0,
+            token=token1, secret_key=key, count=0,
         )
         state = {
             "device_id": "test-scene2",
-            "secret_key": TEST_KEY,
+            "secret_key": key,
             "count": 0,
             "used_counts": [],
             "remaining_days": 0,
@@ -110,7 +123,7 @@ class TestScene2Renewal:
         )
         token2 = resp2.json()["token"]
         value2, type2, count2, used2 = decode_token(
-            token=token2, secret_key=TEST_KEY, count=count1, used_counts=used1,
+            token=token2, secret_key=key, count=count1, used_counts=used1,
         )
         apply_token(state, int(value2), type2, count2, used2)
         assert state["remaining_days"] == 90
@@ -128,13 +141,13 @@ class TestScene2Renewal:
 class TestScene3InvalidToken:
     def test_wrong_length_rejected(self):
         value, token_type, new_count, used_counts = decode_token(
-            token="12345", secret_key=TEST_KEY, count=0,
+            token="12345", secret_key=_key(), count=0,
         )
         assert token_type == TokenType.INVALID
 
     def test_all_nines_rejected(self):
         value, token_type, new_count, used_counts = decode_token(
-            token="999999999", secret_key=TEST_KEY, count=0,
+            token="999999999", secret_key=_key(), count=0,
         )
         assert token_type in (TokenType.INVALID, TokenType.ALREADY_USED) or \
             token_type == TokenType.INVALID
@@ -142,8 +155,9 @@ class TestScene3InvalidToken:
 
 class TestScene4ExpiredLock:
     async def test_replay_blocked_by_openpaygo(self, client):
+        key = _key()
         sid = await _login(client)
-        cid = await _create_customer(client)
+        cid = await _create_customer(client, secret_key=key)
         resp = await client.post(
             f"/api/customers/{cid}/simulate-payment",
             json={"amount": 5},
@@ -151,19 +165,19 @@ class TestScene4ExpiredLock:
         token = resp.json()["token"]
 
         value, token_type, count, used = decode_token(
-            token=token, secret_key=TEST_KEY, count=0, used_counts=[],
+            token=token, secret_key=key, count=0, used_counts=[],
         )
         assert token_type == TokenType.ADD_TIME
 
         value2, type2, count2, used2 = decode_token(
-            token=token, secret_key=TEST_KEY, count=count, used_counts=used,
+            token=token, secret_key=key, count=count, used_counts=used,
         )
         assert type2 == TokenType.ALREADY_USED
 
     def test_fast_forward_to_lock(self):
         state = {
             "device_id": "test-ff",
-            "secret_key": TEST_KEY,
+            "secret_key": _key(),
             "count": 2,
             "used_counts": [0, 1],
             "remaining_days": 5,
@@ -177,8 +191,9 @@ class TestScene4ExpiredLock:
 
 class TestScene5PermanentUnlock:
     async def test_permanent_unlock_full_flow(self, client):
+        key = _key()
         sid = await _login(client)
-        cid = await _create_customer(client)
+        cid = await _create_customer(client, secret_key=key)
 
         resp = await client.post(
             f"/api/customers/{cid}/permanent-unlock",
@@ -191,13 +206,13 @@ class TestScene5PermanentUnlock:
         assert "sms" in data
 
         value, token_type, count, used = decode_token(
-            token=token, secret_key=TEST_KEY, count=0,
+            token=token, secret_key=key, count=0,
         )
         assert token_type == TokenType.DISABLE_PAYG
 
         state = {
             "device_id": "test-permanent",
-            "secret_key": TEST_KEY,
+            "secret_key": key,
             "count": 0,
             "used_counts": [],
             "remaining_days": 0,
@@ -211,7 +226,7 @@ class TestScene5PermanentUnlock:
     def test_permanent_not_affected_by_fast_forward(self):
         state = {
             "device_id": "test-perm-ff",
-            "secret_key": TEST_KEY,
+            "secret_key": _key(),
             "count": 1,
             "used_counts": [0],
             "remaining_days": -1,

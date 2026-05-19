@@ -1,9 +1,20 @@
+import secrets
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.redis import init_redis, close_redis
 
-TEST_KEY = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
+
+def _key() -> str:
+    return secrets.token_hex(16)
+
+
+def _device_id() -> str:
+    return f"DEV-{secrets.token_hex(3)}"
+
+
+TEST_KEY = _key()  # 向后兼容
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -46,28 +57,59 @@ async def auth_client(client):
 
 class TestCreateCustomer:
     async def test_create_customer_with_secret_key(self, auth_client):
+        key = _key()
         response = await auth_client.post("/api/customers", json={
             "name": "Sok Heng",
             "phone": "0888888001",
-            "device_id": "Solar-001",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": key,
         })
         assert response.status_code == 200
         data = response.json()
         assert data["id"].startswith("C")
         assert data["name"] == "Sok Heng"
-        assert data["secret_key"] == TEST_KEY
+        assert data["secret_key"] == key
         assert data["count"] == 0
 
     async def test_invalid_secret_key_rejected(self, auth_client):
         response = await auth_client.post("/api/customers", json={
             "name": "Bad Key",
             "phone": "000",
-            "device_id": "D000",
+            "device_id": _device_id(),
             "secret_key": "too-short",
         })
         assert response.status_code == 400
         assert "secret_key" in response.json()["detail"]
+
+    async def test_duplicate_device_id_returns_409(self, auth_client):
+        dup_device_id = _device_id()
+        await auth_client.post("/api/customers", json={
+            "name": "First", "phone": "1",
+            "device_id": dup_device_id,
+            "secret_key": _key(),
+        })
+        response = await auth_client.post("/api/customers", json={
+            "name": "Second", "phone": "2",
+            "device_id": dup_device_id,
+            "secret_key": _key(),
+        })
+        assert response.status_code == 409
+        assert dup_device_id in response.json()["detail"]
+
+    async def test_duplicate_secret_key_returns_409(self, auth_client):
+        dup_key = _key()
+        await auth_client.post("/api/customers", json={
+            "name": "First", "phone": "1",
+            "device_id": _device_id(),
+            "secret_key": dup_key,
+        })
+        response = await auth_client.post("/api/customers", json={
+            "name": "Second", "phone": "2",
+            "device_id": _device_id(),
+            "secret_key": dup_key,
+        })
+        assert response.status_code == 409
+        assert "密钥" in response.json()["detail"]
 
 
 # ---------------------------------------------------------------------------
@@ -84,8 +126,8 @@ class TestGetCustomers:
         resp = await auth_client.post("/api/customers", json={
             "name": "Mary Keo",
             "phone": "0966666002",
-            "device_id": "Solar-002",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         response = await auth_client.get(f"/api/customers/{cid}")
@@ -100,8 +142,8 @@ class TestGetCustomers:
         resp = await auth_client.post("/api/customers", json={
             "name": "Delete Me",
             "phone": "000",
-            "device_id": "D000",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         response = await auth_client.delete(f"/api/customers/{cid}")
@@ -118,8 +160,8 @@ class TestGenerateToken:
         resp = await auth_client.post("/api/customers", json={
             "name": "Token Test",
             "phone": "0999999999",
-            "device_id": "Solar-099",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         response = await auth_client.post(
@@ -136,8 +178,8 @@ class TestGenerateToken:
         resp = await auth_client.post("/api/customers", json={
             "name": "Token Test 2",
             "phone": "0999999998",
-            "device_id": "Solar-098",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         r1 = await auth_client.post(
@@ -187,8 +229,8 @@ class TestSimulatePayment:
         resp = await auth_client.post("/api/customers", json={
             "name": "Payment Test",
             "phone": "0888888001",
-            "device_id": "SN-KH-001",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         resp = await auth_client.post(
@@ -210,8 +252,8 @@ class TestSimulatePayment:
         resp = await auth_client.post("/api/customers", json={
             "name": "Payment Test 10",
             "phone": "0888888001",
-            "device_id": "SN-KH-002",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         resp = await auth_client.post(
@@ -232,8 +274,8 @@ class TestSimulatePayment:
         resp = await auth_client.post("/api/customers", json={
             "name": "Payment Test Unknown",
             "phone": "0888888001",
-            "device_id": "SN-KH-003",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         resp = await auth_client.post(
@@ -246,8 +288,8 @@ class TestSimulatePayment:
         resp = await auth_client.post("/api/customers", json={
             "name": "TwoPay Test",
             "phone": "0888888001",
-            "device_id": "SN-KH-004",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         r1 = await auth_client.post(
@@ -270,8 +312,8 @@ class TestLockDevice:
         resp = await auth_client.post("/api/customers", json={
             "name": "Lock Test",
             "phone": "0888888001",
-            "device_id": "SN-KH-010",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         resp = await auth_client.post(f"/api/customers/{cid}/lock")
@@ -295,8 +337,8 @@ class TestPermanentUnlock:
         resp = await auth_client.post("/api/customers", json={
             "name": "PermUnlock Test",
             "phone": "0888888001",
-            "device_id": "SN-KH-020",
-            "secret_key": TEST_KEY,
+            "device_id": _device_id(),
+            "secret_key": _key(),
         })
         cid = resp.json()["id"]
         resp = await auth_client.post(
