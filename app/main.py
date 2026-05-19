@@ -19,6 +19,11 @@ async def lifespan(app: FastAPI):
     # 启动：创建表 + 初始化 Redis + 种子数据
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # 临时手动迁移：添加 tokens.amount 列（后续表创建后可移除）
+        from sqlalchemy import text
+        await conn.run_sync(lambda c: c.execute(text(
+            "ALTER TABLE tokens ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2) DEFAULT 0"
+        )))
     await init_redis()
     # 种子支付汇率
     from app.database import AsyncSessionLocal

@@ -190,7 +190,7 @@ async def simulate_payment(request: Request, customer_id: str,
         token_type=TokenType.ADD_TIME,
     )
     await set_customer_count(db, customer_id, new_count)
-    await add_token(db, customer_id, token_str, days, new_count)
+    await add_token(db, customer_id, token_str, days, new_count, amount=body.amount)
     await update_customer_status(db, customer_id, "active")
 
     message = (

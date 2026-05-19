@@ -89,10 +89,11 @@ async def get_tokens(db: AsyncSession) -> list[dict]:
 
 
 async def add_token(db: AsyncSession, customer_id: str, token: str,
-                    days: int, count: int) -> str:
+                    days: int, count: int, amount: float = 0) -> str:
     tid = _new_id("T")
     t = Token(
-        id=tid, customer_id=customer_id, token=token, days=days, count=count,
+        id=tid, customer_id=customer_id, token=token, days=days,
+        count=count, amount=amount,
         generated_at=datetime.now(), expires_at=datetime.now() + timedelta(days=7),
     )
     db.add(t)
@@ -168,6 +169,7 @@ def _token_to_dict(t: Token) -> dict:
         "customer_id": t.customer_id,
         "token": t.token,
         "days": t.days,
+        "amount": float(t.amount) if t.amount else 0,
         "count": t.count,
         "generated_at": t.generated_at.strftime("%Y-%m-%d %H:%M:%S") if t.generated_at else None,
         "expires_at": t.expires_at.strftime("%Y-%m-%d %H:%M:%S") if t.expires_at else None,

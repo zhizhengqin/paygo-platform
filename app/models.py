@@ -42,6 +42,7 @@ class Token(Base):
     customer_id = Column(String(8), ForeignKey("customers.id"), nullable=False, index=True)
     token = Column(String(9), nullable=False)
     days = Column(Integer, nullable=False)
+    amount = Column(Numeric(10, 2), default=0)
     count = Column(Integer, nullable=False)
     generated_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
     expires_at = Column(DateTime(timezone=True), nullable=False,
