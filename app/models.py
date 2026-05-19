@@ -29,8 +29,10 @@ class Customer(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
     locked_at = Column(DateTime(timezone=True), nullable=True)
 
-    tokens = relationship("Token", back_populates="customer", lazy="selectin")
-    sms_records = relationship("SmsRecord", back_populates="customer", lazy="selectin")
+    tokens = relationship("Token", back_populates="customer", lazy="selectin",
+                          cascade="all, delete-orphan")
+    sms_records = relationship("SmsRecord", back_populates="customer", lazy="selectin",
+                               cascade="all, delete-orphan")
 
 
 class Token(Base):
