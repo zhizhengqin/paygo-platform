@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <div class="main-layout">
   <!-- 左侧面板 -->
   <aside class="sidebar">
@@ -122,6 +123,13 @@
 <div class="toast" id="toast"></div>
 
 <script>
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 let selectedCustomerId = null;
 let deleteTargetId = null;
 
@@ -180,8 +188,10 @@ function copyKey(key, btn) {
 async function showDashboard() {
   selectedCustomerId = null;
   await loadCustomers();
-  const resp = await fetch('/api/dashboard/stats');
-  const stats = await resp.json();
+  try {
+    const resp = await fetch('/api/dashboard/stats');
+    if (!resp.ok) throw new Error(resp.statusText);
+    const stats = await resp.json();
 
   document.getElementById('detailPanel').innerHTML = `
     <div id="dashboardHome">
@@ -230,15 +240,19 @@ async function showDashboard() {
 
   renderStatusChart(stats);
   renderTxTable(stats.recent_transactions);
+  } catch (e) {
+    document.getElementById('detailPanel').innerHTML = `
+      <div class="empty-state"><p>加载仪表盘失败，请刷新重试</p></div>`;
+  }
 }
 
 function renderStatusChart(stats) {
-  const ctx = document.getElementById('statusChart').getContext('2d');
-  // 全部为0时显示空状态
   const data = [stats.active_devices, stats.locked_devices, stats.permanent_devices];
   if (data.every(d => d === 0)) {
-    data[0] = 1; // 占位，避免 Chart.js 报错
+    document.querySelector('.chart-wrap').innerHTML = '<p style="text-align:center;color:#94a3b8;padding:60px 0;">暂无设备数据</p>';
+    return;
   }
+  const ctx = document.getElementById('statusChart').getContext('2d');
   new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -271,7 +285,7 @@ function renderTxTable(transactions) {
   tbody.innerHTML = transactions.map(t => `
     <tr>
       <td>${t.generated_at || '-'}</td>
-      <td>${t.customer_name}</td>
+      <td>${escapeHtml(t.customer_name)}</td>
       <td>$${t.amount.toFixed(2)}</td>
       <td>${t.days === -1 ? '永久' : t.days + '天'}</td>
     </tr>
@@ -291,7 +305,7 @@ async function loadCustomers() {
   container.innerHTML = customers.map(c => `
     <div class="customer-item ${c.id === selectedCustomerId ? 'active' : ''}"
          onclick="selectCustomer('${c.id}')">
-      <div class="name">${STATUS_DOT[c.status] || '⚪'} ${c.name}</div>
+      <div class="name">${STATUS_DOT[c.status] || '⚪'} ${escapeHtml(c.name)}</div>
       <div class="meta">${c.phone} · ${c.device_id}</div>
     </div>
   `).join('');
@@ -317,7 +331,7 @@ async function selectCustomer(id) {
       <div class="detail-header">
         <div class="detail-avatar">${initials}</div>
         <div>
-          <h2>${c.name}</h2>
+          <h2>${escapeHtml(c.name)}</h2>
           <span class="status-badge ${statusClass}">${statusDot} ${statusLabel}</span>
         </div>
       </div>
@@ -333,14 +347,14 @@ async function selectCustomer(id) {
       <div class="detail-section">
         <h4>模拟支付</h4>
         <p style="color:#94a3b8;font-size:12px;margin-bottom:10px;">模拟客户通过 Bakong 完成还款</p>
-        <button class="btn btn-primary" onclick="showSimulatePaymentModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')">模拟支付</button>
+        <button class="btn btn-primary" onclick="showSimulatePaymentModal('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">模拟支付</button>
       </div>
 
       <div class="detail-body">
         <div class="action-group">
-          <button class="btn btn-danger" onclick="showLockConfirm('${c.id}', '${c.name.replace(/'/g, "\\'")}')">锁定设备</button>
-          <button class="btn btn-warning" onclick="showPermanentUnlockConfirm('${c.id}', '${c.name.replace(/'/g, "\\'")}')">永久解锁</button>
-          <button class="btn btn-outline" style="color:#dc2626;" onclick="showDeleteModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')">删除客户</button>
+          <button class="btn btn-danger" onclick="showLockConfirm('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">锁定设备</button>
+          <button class="btn btn-warning" onclick="showPermanentUnlockConfirm('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">永久解锁</button>
+          <button class="btn btn-outline" style="color:#dc2626;" onclick="showDeleteModal('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">删除客户</button>
         </div>
       </div>
 

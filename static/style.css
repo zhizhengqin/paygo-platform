@@ -460,3 +460,111 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+/* ===== 运营仪表盘首页 ===== */
+
+.dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+}
+.dash-header h2 {
+  font-size: 20px;
+  color: #0f172a;
+  margin: 0;
+}
+.dash-date {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+/* KPI 概览卡片 */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 20px 24px;
+}
+.kpi-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-top: 3px solid;
+}
+.kpi-blue  { border-top-color: #3b82f6; }
+.kpi-green { border-top-color: #059669; }
+.kpi-gold  { border-top-color: #f59e0b; }
+.kpi-red   { border-top-color: #dc2626; }
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.kpi-label {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* 图表 + 交易表格双栏 */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 16px;
+  padding: 0 24px 24px;
+}
+
+.dash-chart-box,
+.dash-table-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.dash-chart-box h4,
+.dash-table-box h4 {
+  font-size: 15px;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+}
+
+.chart-wrap {
+  height: 280px;
+  position: relative;
+}
+
+/* 最近交易表格 */
+.tx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tx-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: #64748b;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tx-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+}
+
+.tx-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* 响应式：小屏单列 */
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .dash-grid { grid-template-columns: 1fr; }
+}
