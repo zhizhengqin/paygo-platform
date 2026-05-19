@@ -11,3 +11,8 @@
     ]
   }
 }
+{
+  "permissions": {
+    "defaultMode": "auto"
+  }
+}
