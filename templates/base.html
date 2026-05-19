@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  {% if request.cookies.get('session') == 'authenticated' and request.url.path != '/login' %}
+  {% if request.url.path != '/login' %}
   <nav class="navbar">
     <div class="navbar-brand">
       <img src="/static/logo.png" alt="新华智科技" class="navbar-logo">
