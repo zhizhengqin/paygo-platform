@@ -3,7 +3,24 @@
 ## 1. 环境要求
 
 - Python 3.10+
+- PostgreSQL 15+（已安装并运行）
+- Redis 7+（已安装并运行）
 - pip
+
+### 1.1 数据库初始化（首次）
+
+```bash
+# 创建数据库和用户（使用 postgres 超级用户）
+psql -U postgres -c "CREATE USER paygo_user WITH PASSWORD 'PaygoDB2026!';"
+psql -U postgres -c "CREATE DATABASE paygo_platform OWNER paygo_user;"
+psql -U postgres -c "CREATE DATABASE paygo_platform_test OWNER paygo_user;"
+
+# 授权 schema 权限
+psql -U postgres -d paygo_platform -c "GRANT ALL ON SCHEMA public TO paygo_user;"
+psql -U postgres -d paygo_platform_test -c "GRANT ALL ON SCHEMA public TO paygo_user;"
+```
+
+应用启动时会自动创建所有表并种子初始数据（支付汇率）。
 
 ## 2. 本地启动
 
@@ -18,7 +35,7 @@ source venv/bin/activate
 # 安装依赖
 pip install -r requirements.txt
 
-# 启动服务
+# 确保 PostgreSQL 和 Redis 已运行，然后启动服务
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -27,24 +44,152 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - **API 文档 (Swagger)**: http://localhost:8000/docs
 - **登录账号**: `admin` / `admin123`
 
+> 首次启动时，应用会自动创建数据库表并种子支付汇率数据（$5=30天, $10=60天）。
+
 ## 3. 远程部署
 
-### 方案一：Render（免费）
+### 环境变量配置
 
-1. 将项目推送到 GitHub
-2. 在 [Render](https://render.com) 创建新 Web Service，连接仓库
-3. 配置：
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. 部署完成后通过 Render 提供的域名访问
-
-### 方案二：VPS / 云服务器
+部署到云服务时，通过环境变量覆盖本地默认配置：
 
 ```bash
+export DATABASE_URL="postgresql+asyncpg://user:password@<DB_HOST>:5432/paygo_platform"
+export REDIS_URL="redis://:<password>@<REDIS_HOST>:6379/0"
+export DB_POOL_SIZE=20          # 云环境建议提高连接池
+export DB_MAX_OVERFLOW=40
+export SESSION_TTL=1800
+export CACHE_TTL_API=120        # 缓存可适当延长
+```
+
+### 方案一：Docker Compose（推荐）
+
+创建 `docker-compose.yml`：
+
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://paygo_user:${DB_PASSWORD}@db:5432/paygo_platform
+      - REDIS_URL=redis://redis:6379/0
+      - DB_POOL_SIZE=20
+      - DB_MAX_OVERFLOW=40
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: paygo_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: paygo_platform
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paygo_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+```
+
+`Dockerfile`：
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+启动：
+
+```bash
+DB_PASSWORD=<your-secure-password> docker compose up -d
+```
+
+### 方案二：云托管服务
+
+**Render / Railway / Fly.io：**
+
+1. 将项目推送到 GitHub
+2. 创建 Web Service，连接仓库
+3. 配置环境变量：
+   - `DATABASE_URL` — 指向云 PostgreSQL（Supabase / Neon / Render PostgreSQL）
+   - `REDIS_URL` — 指向云 Redis（Upstash / Render Redis）
+4. Build Command: `pip install -r requirements.txt`
+5. Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+**推荐云服务组合：**
+
+| 服务 | 推荐 | 免费层 |
+|------|------|--------|
+| 应用托管 | Render / Railway | 750h/月 |
+| PostgreSQL | Supabase / Neon | 500MB 存储 |
+| Redis | Upstash / Render Redis | 256MB 内存 |
+
+> 注意：使用 Neon Serverless PostgreSQL 时，连接串需加 `?sslmode=require`，连接池建议调低（Serverless 有连接数限制）。
+
+### 方案三：VPS / 云服务器
+
+```bash
+# 1. 安装系统依赖
+sudo apt update && sudo apt install postgresql-15 redis-server python3.12 python3-pip
+
+# 2. 创建数据库
+sudo -u postgres createuser paygo_user
+sudo -u postgres createdb paygo_platform -O paygo_user
+sudo -u postgres psql -c "ALTER USER paygo_user WITH PASSWORD '<secure-password>';"
+
+# 3. 部署应用
 git clone <仓库地址>
 cd paygo-platform
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+
+# 4. 配置环境变量并启动
+export DATABASE_URL="postgresql+asyncpg://paygo_user:<password>@localhost:5432/paygo_platform"
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# 或使用 systemd 管理进程（推荐生产环境）
+```
+
+**生产环境 systemd 配置** `/etc/systemd/system/paygo.service`：
+
+```ini
+[Unit]
+Description=PAYGO Solar Platform
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=www-data
+WorkingDirectory=/opt/paygo-platform
+Environment="DATABASE_URL=postgresql+asyncpg://paygo_user:<password>@localhost:5432/paygo_platform"
+Environment="REDIS_URL=redis://localhost:6379/0"
+Environment="DB_POOL_SIZE=20"
+Environment="DB_MAX_OVERFLOW=40"
+ExecStart=/opt/paygo-platform/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
 ```
 
 ## 4. 运行测试
@@ -52,19 +197,24 @@ nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 ```bash
 source venv/bin/activate
 
-# 运行全部测试（79 个）
+# 运行全部测试（105 个）
 pytest tests/ -v
 
 # 按模块运行
-pytest tests/test_db.py -v                     # 数据库 (16 tests)
-pytest tests/test_auth.py -v                   # 认证 (6 tests)
-pytest tests/test_customers_api.py -v          # 客户API (20 tests)
-pytest tests/test_state_manager.py -v          # 状态机 (19 tests)
-pytest tests/test_config_api.py -v             # 支付汇率 (2 tests)
+pytest tests/test_models.py -v          # ORM 模型 (8 tests)
+pytest tests/test_database.py -v        # 数据库连接池 (3 tests)
+pytest tests/test_redis_client.py -v    # Redis 客户端 (10 tests)
+pytest tests/test_store.py -v           # 数据访问层 (18 tests)
+pytest tests/test_auth.py -v            # 认证 (6 tests)
+pytest tests/test_customers_api.py -v   # 客户API (20 tests)
+pytest tests/test_state_manager.py -v   # 状态机 (19 tests)
+pytest tests/test_config_api.py -v      # 支付汇率 (2 tests)
 pytest tests/test_controller_integration.py -v # 控制器集成 (4 tests)
-pytest tests/test_integration.py -v            # 端到端集成 (3 tests)
-pytest tests/test_upgrade.py -v                # 五场景演示 (9 tests)
+pytest tests/test_integration.py -v     # 端到端集成 (6 tests)
+pytest tests/test_upgrade.py -v         # 五场景演示 (9 tests)
 ```
+
+> 测试使用独立数据库 `paygo_platform_test`，每次测试通过 session rollback 隔离，不影响开发数据库。
 
 ## 5. 五个 MFI 演示场景
 
@@ -436,34 +586,34 @@ cd ~/controller
 python controller.py
 ```
 
-## 11. 状态文件
+## 11. 设备状态存储
 
-控制器状态保存在 `~/.paygo/` 目录：
+控制器状态保存在 PostgreSQL `device_states` 表中：
 
-**`~/.paygo/state.json`**：
-```json
-{
-  "secret_key": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-  "count": 2,
-  "used_counts": [0, 1],
-  "remaining_days": 90,
-  "last_update": "2026-05-18",
-  "status": "active"
-}
+```sql
+SELECT * FROM device_states WHERE device_id = 'default';
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `secret_key` | 32 位 hex 设备密钥（出厂预设） |
-| `count` | OpenPAYGO 当前 count 值 |
-| `used_counts` | 已使用的 count 列表（内置防重放） |
-| `remaining_days` | 剩余天数，`-1` 表示永久解锁 |
-| `last_update` | 上次状态更新日期 |
-| `status` | `unbound` / `active` / `locked` / `permanent` |
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `device_id` | VARCHAR(50) | 设备唯一标识（默认 `"default"`） |
+| `secret_key` | VARCHAR(64) | 32 位 hex 设备密钥（出厂预设） |
+| `count` | INTEGER | OpenPAYGO 当前 count 值 |
+| `used_counts` | JSONB | 已使用的 count 列表（内置防重放） |
+| `remaining_days` | INTEGER | 剩余天数，`-1` 表示永久解锁 |
+| `last_update` | DATE | 上次状态更新日期 |
+| `status` | VARCHAR(20) | `unbound` / `active` / `locked` / `permanent` |
 
-> `~/.paygo/used_tokens.json` 已废弃，OpenPAYGO 的 count 机制天然防重放。
+> 多设备支持：每个 `device_id` 独立存储状态，控制器默认使用 `"default"`。
 
-**重置设备**：`rm -rf ~/.paygo`
+**重置设备**：
+
+```bash
+psql -U paygo_user -d paygo_platform -c \
+  "DELETE FROM device_states WHERE device_id = 'default';"
+```
+
+或使用控制器中的 `[R]` 重置选项。
 
 ## 12. Token 编码格式（OpenPAYGO 标准）
 
@@ -510,15 +660,19 @@ new_count, token = generate_token(
 ```
 paygo-platform/
 ├── app/
-│   ├── main.py              # FastAPI 入口
-│   ├── db.py                # 内存数据库（客户/Token/短信/汇率）
+│   ├── main.py              # FastAPI 入口（lifespan 管理 DB + Redis）
+│   ├── settings.py          # 数据库/Redis 连接配置（环境变量覆盖）
+│   ├── models.py            # SQLAlchemy ORM（5 张表）
+│   ├── database.py          # async engine + session 工厂 + Depends
+│   ├── redis.py             # Redis session/缓存/防重放
+│   ├── store.py             # async 数据访问层
 │   └── routers/
-│       ├── auth.py          # 认证路由
-│       ├── customers.py     # 客户 & 模拟支付 & 锁定/解锁 API（OpenPAYGO）
+│       ├── auth.py          # 认证路由（Redis session）
+│       ├── customers.py     # 客户 & 模拟支付 & 锁定/解锁 API（async + 缓存）
 │       └── config.py        # 支付汇率配置 API
 ├── controller/
 │   ├── controller.py        # 终端 UI（9位Token输入/密钥绑定/count显示）
-│   └── state_manager.py     # 状态机 + 持久化（secret_key/count/used_counts）
+│   └── state_manager.py     # 状态机 + PostgreSQL 持久化
 ├── static/
 │   └── style.css            # 全局样式（绿色主题 #059669）
 ├── templates/
@@ -526,8 +680,11 @@ paygo-platform/
 │   ├── login.html           # 登录页
 │   └── dashboard.html       # 主界面（模拟支付/SMS/锁定/永久解锁）
 ├── tests/
-│   ├── conftest.py          # 全局 fixture + openpaygo 兼容补丁
-│   ├── test_db.py           # 数据库
+│   ├── conftest.py          # 全局 fixture + openpaygo 补丁 + asyncio 配置
+│   ├── test_models.py       # ORM 模型
+│   ├── test_database.py     # 连接池
+│   ├── test_redis_client.py # Redis 客户端
+│   ├── test_store.py        # 数据访问层
 │   ├── test_auth.py         # 认证
 │   ├── test_customers_api.py    # 客户 API
 │   ├── test_state_manager.py    # 状态机
@@ -553,13 +710,15 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
 
 # ─── 2. 运行测试（确保一切正常） ───
 pytest tests/ -v
-# 预期: 79 passed
+# 预期: 105 passed
 
-# ─── 3. 创建客户 ───
+# ─── 3. 登录并创建客户 ───
+# 登录（获取 session cookie）
 curl -c /tmp/cookies.txt -X POST \
   -d "username=admin&password=admin123" \
   http://localhost:8000/login
 
+# 创建客户
 curl -b /tmp/cookies.txt -X POST \
   -H "Content-Type: application/json" \
   -d '{"name":"Demo User","phone":"099999999","device_id":"DEMO-001","secret_key":"a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"}' \
@@ -575,29 +734,30 @@ curl -b /tmp/cookies.txt -X POST \
 # ─── 5. 控制器验证 Token ───
 cd controller
 python3 -c "
+import asyncio
 from openpaygo import decode_token, TokenType
 from state_manager import load, save, apply_token
 
-state = load()
-state['secret_key'] = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6'
-token = input('Token: ').strip()
-value, token_type, new_count, used_counts = decode_token(
-    token=token,
-    secret_key=state['secret_key'],
-    count=state['count'],
-    used_counts=state.get('used_counts'),
-)
-print(f'Type: {token_type}, Days: {value}')
-if token_type == TokenType.ADD_TIME:
-    apply_token(state, int(value), token_type, new_count, used_counts)
-    save(state)
-    print(f'激活成功！剩余 {state[\"remaining_days\"]} 天')
-elif token_type == TokenType.ALREADY_USED:
-    print('Token 已使用过')
-elif token_type == TokenType.INVALID:
-    print('Token 无效')
-"
+async def verify():
+    state = await load()
+    state['secret_key'] = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6'
+    token = input('Token: ').strip()
+    value, token_type, new_count, used_counts = decode_token(
+        token=token,
+        secret_key=state['secret_key'],
+        count=state['count'],
+        used_counts=state.get('used_counts'),
+    )
+    print(f'Type: {token_type}, Days: {value}')
+    if token_type == TokenType.ADD_TIME:
+        apply_token(state, int(value), token_type, new_count, used_counts)
+        await save(state)
+        print(f'激活成功！剩余 {state[\"remaining_days\"]} 天')
+    elif token_type == TokenType.ALREADY_USED:
+        print('Token 已使用过')
+    elif token_type == TokenType.INVALID:
+        print('Token 无效')
 
-# ─── 6. 清理 ───
-rm -rf ~/.paygo
+asyncio.run(verify())
+"
 ```

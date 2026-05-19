@@ -29,27 +29,28 @@ async def client():
 
 async def _login(client):
     resp = await client.post("/login", data={"username": "admin", "password": "admin123"})
-    return resp.cookies.get("session")
+    sid = resp.cookies.get("session")
+    client.cookies.set("session", sid)
+    return sid
 
 
-async def _create_customer(client, sid, name="Sok Heng", phone="0888888001",
+async def _create_customer(client, name="Sok Heng", phone="0888888001",
                           device_id="SN-KH-001", secret_key=TEST_KEY):
     resp = await client.post("/api/customers", json={
         "name": name, "phone": phone,
         "device_id": device_id, "secret_key": secret_key,
-    }, cookies={"session": sid})
+    })
     return resp.json()["id"]
 
 
 class TestScene1FirstPayment:
     async def test_scene1_full_flow(self, client):
         sid = await _login(client)
-        cid = await _create_customer(client, sid)
+        cid = await _create_customer(client)
 
         resp = await client.post(
             f"/api/customers/{cid}/simulate-payment",
             json={"amount": 5},
-            cookies={"session": sid},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -81,11 +82,11 @@ class TestScene1FirstPayment:
 class TestScene2Renewal:
     async def test_scene2_days_stack(self, client):
         sid = await _login(client)
-        cid = await _create_customer(client, sid)
+        cid = await _create_customer(client)
 
         resp1 = await client.post(
             f"/api/customers/{cid}/simulate-payment",
-            json={"amount": 5}, cookies={"session": sid},
+            json={"amount": 5},
         )
         token1 = resp1.json()["token"]
         value1, type1, count1, used1 = decode_token(
@@ -105,7 +106,7 @@ class TestScene2Renewal:
 
         resp2 = await client.post(
             f"/api/customers/{cid}/simulate-payment",
-            json={"amount": 10}, cookies={"session": sid},
+            json={"amount": 10},
         )
         token2 = resp2.json()["token"]
         value2, type2, count2, used2 = decode_token(
@@ -116,11 +117,11 @@ class TestScene2Renewal:
 
     async def test_scene2_tokens_are_different(self, client):
         sid = await _login(client)
-        cid = await _create_customer(client, sid)
+        cid = await _create_customer(client)
         r1 = await client.post(f"/api/customers/{cid}/simulate-payment",
-                               json={"amount": 5}, cookies={"session": sid})
+                               json={"amount": 5})
         r2 = await client.post(f"/api/customers/{cid}/simulate-payment",
-                               json={"amount": 5}, cookies={"session": sid})
+                               json={"amount": 5})
         assert r1.json()["token"] != r2.json()["token"]
 
 
@@ -142,10 +143,10 @@ class TestScene3InvalidToken:
 class TestScene4ExpiredLock:
     async def test_replay_blocked_by_openpaygo(self, client):
         sid = await _login(client)
-        cid = await _create_customer(client, sid)
+        cid = await _create_customer(client)
         resp = await client.post(
             f"/api/customers/{cid}/simulate-payment",
-            json={"amount": 5}, cookies={"session": sid},
+            json={"amount": 5},
         )
         token = resp.json()["token"]
 
@@ -177,11 +178,10 @@ class TestScene4ExpiredLock:
 class TestScene5PermanentUnlock:
     async def test_permanent_unlock_full_flow(self, client):
         sid = await _login(client)
-        cid = await _create_customer(client, sid)
+        cid = await _create_customer(client)
 
         resp = await client.post(
             f"/api/customers/{cid}/permanent-unlock",
-            cookies={"session": sid},
         )
         assert resp.status_code == 200
         data = resp.json()

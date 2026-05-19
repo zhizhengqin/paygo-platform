@@ -24,7 +24,9 @@ async def client():
 
 async def _login(client):
     resp = await client.post("/login", data={"username": "admin", "password": "admin123"})
-    return resp.cookies.get("session")
+    sid = resp.cookies.get("session")
+    client.cookies.set("session", sid)
+    return sid
 
 
 class TestFullUserFlow:
@@ -37,39 +39,39 @@ class TestFullUserFlow:
             "phone": "0888888001",
             "device_id": "Solar-001",
             "secret_key": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6",
-        }, cookies={"session": sid})
+        })
         assert resp.status_code == 200
         cid = resp.json()["id"]
 
         # List customers
-        resp = await client.get("/api/customers", cookies={"session": sid})
+        resp = await client.get("/api/customers")
         customers = resp.json()
         assert any(c["id"] == cid for c in customers)
 
         # Get customer detail
-        resp = await client.get(f"/api/customers/{cid}", cookies={"session": sid})
+        resp = await client.get(f"/api/customers/{cid}")
         assert resp.json()["name"] == "Sok Heng"
 
         # Generate token
         resp = await client.post(f"/api/customers/{cid}/token", json={
             "days": 30,
-        }, cookies={"session": sid})
+        })
         assert resp.status_code == 200
         token_data = resp.json()
         assert len(token_data["token"]) == 9
         assert token_data["days"] == 30
 
         # List tokens
-        resp = await client.get("/api/tokens", cookies={"session": sid})
+        resp = await client.get("/api/tokens")
         tokens = resp.json()
         assert any(t["customer_id"] == cid for t in tokens)
 
         # Delete customer
-        resp = await client.delete(f"/api/customers/{cid}", cookies={"session": sid})
+        resp = await client.delete(f"/api/customers/{cid}")
         assert resp.json()["ok"] is True
 
         # Verify deleted
-        resp = await client.get(f"/api/customers/{cid}", cookies={"session": sid})
+        resp = await client.get(f"/api/customers/{cid}")
         assert resp.status_code == 404
 
 
@@ -89,7 +91,7 @@ class TestLoginFlow:
 
     async def test_logout_redirects_to_login(self, client):
         sid = await _login(client)
-        resp = await client.get("/logout", cookies={"session": sid}, follow_redirects=False)
+        resp = await client.get("/logout", follow_redirects=False)
         assert resp.status_code == 303
         assert resp.headers["location"] == "/login"
 
@@ -102,5 +104,5 @@ class TestUIPagesRender:
 
     async def test_dashboard_renders_when_authenticated(self, client):
         sid = await _login(client)
-        resp = await client.get("/dashboard", cookies={"session": sid})
+        resp = await client.get("/dashboard")
         assert resp.status_code == 200
