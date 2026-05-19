@@ -101,6 +101,44 @@ body {
   background: var(--muted);
 }
 
+/* ── Nav Tabs (二层导航) ── */
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 44px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+.nav-tab {
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.nav-tab:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+.nav-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ── 侧边栏显隐 ── */
+.main-layout.sidebar-hidden .sidebar {
+  display: none;
+}
+
 /* ── Login ── */
 .login-wrapper {
   display: flex;
