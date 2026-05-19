@@ -1,18 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(./venv/bin/python -m pytest tests/ -q)",
-      "Bash(./venv/bin/python -m pytest tests/ --tb=short)",
-      "Bash(./venv/bin/python -m pytest tests/ --tb=short 2>&1 | tail -5)",
-      "Bash(./venv/bin/python -m pytest tests/ --tb=short 2>&1 | tail -10)",
-      "Bash(./venv/bin/python -m pytest tests/ --tb=short 2>&1 | tail -15)",
-      "Bash(./venv/bin/python -m pytest tests/ --tb=short 2>&1 | tail -30)",
-      "Bash(./venv/bin/python -m pytest tests/ -q 2>&1 | tail -5)"
-    ]
-  }
-}
-{
-  "permissions": {
-    "defaultMode": "auto"
+    "defaultMode": "auto",
+    "allow": ["Bash(*)"]
   }
 }
