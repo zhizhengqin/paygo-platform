@@ -1,6 +1,13 @@
 import pytest
 from app.db import reset_db
 
+# pytest-asyncio: 自动识别 async 测试函数，无需 @pytest.mark.asyncio
+pytest_plugins = ("pytest_asyncio",)
+
+
+def pytest_configure(config):
+    config.option.asyncio_mode = "auto"
+
 # ---------------------------------------------------------------------------
 # Monkey-patch openpaygo to fix None-handling bug in _count_is_valid
 # and update_used_counts.  Without these patches decode_token crashes
