@@ -1,28 +1,57 @@
-from fastapi.testclient import TestClient
+import pytest
+from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.db import reset_db
-
-client = TestClient(app)
+from app.redis import init_redis, close_redis
 
 TEST_KEY = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
 
 
-def _login():
-    resp = client.post("/login", data={"username": "admin", "password": "admin123"})
-    return resp.cookies.get("session")
+@pytest.fixture(scope="session", autouse=True)
+async def manage_infra():
+    """Initialize Redis once for the test session, and clean up the DB engine
+    afterwards so subsequent test files can create fresh connection pools."""
+    await init_redis()
+    yield
+    await close_redis()
+    # Dispose the async engine so other test files (e.g. TestClient-based)
+    # can create fresh connections in their own event loops.
+    from app.database import engine
+    await engine.dispose()
 
+
+@pytest.fixture
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+
+
+@pytest.fixture
+async def auth_client(client):
+    """Login and set session cookie on the shared client for authenticated requests."""
+    resp = await client.post(
+        "/login", data={"username": "admin", "password": "admin123"},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    cookie = resp.cookies.get("session")
+    assert cookie is not None
+    client.cookies.set("session", cookie, domain="test")
+    return client
+
+
+# ---------------------------------------------------------------------------
+# Create Customer
+# ---------------------------------------------------------------------------
 
 class TestCreateCustomer:
-    def test_create_customer_with_secret_key(self):
-        from app.db import reset_db
-        reset_db()
-        cookie = _login()
-        response = client.post("/api/customers", json={
+    async def test_create_customer_with_secret_key(self, auth_client):
+        response = await auth_client.post("/api/customers", json={
             "name": "Sok Heng",
             "phone": "0888888001",
             "device_id": "Solar-001",
             "secret_key": TEST_KEY,
-        }, cookies={"session": cookie})
+        })
         assert response.status_code == 200
         data = response.json()
         assert data["id"].startswith("C")
@@ -30,58 +59,72 @@ class TestCreateCustomer:
         assert data["secret_key"] == TEST_KEY
         assert data["count"] == 0
 
-    def test_invalid_secret_key_rejected(self):
-        cookie = _login()
-        response = client.post("/api/customers", json={
+    async def test_invalid_secret_key_rejected(self, auth_client):
+        response = await auth_client.post("/api/customers", json={
             "name": "Bad Key",
             "phone": "000",
             "device_id": "D000",
             "secret_key": "too-short",
-        }, cookies={"session": cookie})
+        })
         assert response.status_code == 400
         assert "secret_key" in response.json()["detail"]
 
 
+# ---------------------------------------------------------------------------
+# Get Customers
+# ---------------------------------------------------------------------------
+
 class TestGetCustomers:
-    def test_list(self):
-        cookie = _login()
-        response = client.get("/api/customers", cookies={"session": cookie})
+    async def test_list(self, auth_client):
+        response = await auth_client.get("/api/customers")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
-    def test_detail(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Mary Keo", "0966666002", "Solar-002", TEST_KEY)
-        cookie = _login()
-        response = client.get(f"/api/customers/{cid}", cookies={"session": cookie})
+    async def test_detail(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Mary Keo",
+            "phone": "0966666002",
+            "device_id": "Solar-002",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        response = await auth_client.get(f"/api/customers/{cid}")
         assert response.status_code == 200
         assert response.json()["name"] == "Mary Keo"
 
-    def test_not_found(self):
-        cookie = _login()
-        response = client.get("/api/customers/C999", cookies={"session": cookie})
+    async def test_not_found(self, auth_client):
+        response = await auth_client.get("/api/customers/C99999")
         assert response.status_code == 404
 
-    def test_delete(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Delete Me", "000", "D000", TEST_KEY)
-        cookie = _login()
-        response = client.delete(f"/api/customers/{cid}", cookies={"session": cookie})
+    async def test_delete(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Delete Me",
+            "phone": "000",
+            "device_id": "D000",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        response = await auth_client.delete(f"/api/customers/{cid}")
         assert response.status_code == 200
         assert response.json()["ok"] is True
 
 
+# ---------------------------------------------------------------------------
+# Generate Token
+# ---------------------------------------------------------------------------
+
 class TestGenerateToken:
-    def test_returns_9_digit_token(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Token Test", "0999999999", "Solar-099", TEST_KEY)
-        cookie = _login()
-        response = client.post(f"/api/customers/{cid}/token", json={
-            "days": 30,
-        }, cookies={"session": cookie})
+    async def test_returns_9_digit_token(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Token Test",
+            "phone": "0999999999",
+            "device_id": "Solar-099",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        response = await auth_client.post(
+            f"/api/customers/{cid}/token", json={"days": 30},
+        )
         assert response.status_code == 200
         data = response.json()
         assert len(data["token"]) == 9
@@ -89,51 +132,68 @@ class TestGenerateToken:
         assert data["customer_id"] == cid
         assert data["days"] == 30
 
-    def test_two_generations_different_tokens(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Token Test", "0999999999", "Solar-099", TEST_KEY)
-        cookie = _login()
-        r1 = client.post(f"/api/customers/{cid}/token", json={
-            "days": 30,
-        }, cookies={"session": cookie})
-        r2 = client.post(f"/api/customers/{cid}/token", json={
-            "days": 30,
-        }, cookies={"session": cookie})
+    async def test_two_generations_different_tokens(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Token Test 2",
+            "phone": "0999999998",
+            "device_id": "Solar-098",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        r1 = await auth_client.post(
+            f"/api/customers/{cid}/token", json={"days": 30},
+        )
+        r2 = await auth_client.post(
+            f"/api/customers/{cid}/token", json={"days": 30},
+        )
         t1 = r1.json()["token"]
         t2 = r2.json()["token"]
         assert t1 != t2, f"Same device+days should produce DIFFERENT tokens: {t1}"
 
 
+# ---------------------------------------------------------------------------
+# List Tokens
+# ---------------------------------------------------------------------------
+
 class TestListTokens:
-    def test_list_tokens(self):
-        cookie = _login()
-        response = client.get("/api/tokens", cookies={"session": cookie})
+    async def test_list_tokens(self, auth_client):
+        response = await auth_client.get("/api/tokens")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
 
 
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+
 class TestAuth:
-    def test_api_requires_auth(self):
-        client.cookies.clear()
-        response = client.get("/api/customers")
+    async def test_api_requires_auth(self, client):
+        response = await client.get("/api/customers")
         assert response.status_code == 401
 
 
+# ---------------------------------------------------------------------------
+# Simulate Payment
+# ---------------------------------------------------------------------------
+
 class TestSimulatePayment:
-    def test_requires_auth(self):
-        resp = client.post("/api/customers/C001/simulate-payment", json={"amount": 5})
+    async def test_requires_auth(self, client):
+        resp = await client.post(
+            "/api/customers/C001/simulate-payment", json={"amount": 5},
+        )
         assert resp.status_code == 401
 
-    def test_returns_9_digit_token_and_sms(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Test User", "0888888001", "SN-KH-001", TEST_KEY)
-        cookie = _login()
-        resp = client.post(
+    async def test_returns_9_digit_token_and_sms(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Payment Test",
+            "phone": "0888888001",
+            "device_id": "SN-KH-001",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        resp = await auth_client.post(
             f"/api/customers/{cid}/simulate-payment",
             json={"amount": 5},
-            cookies={"session": cookie},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -146,83 +206,101 @@ class TestSimulatePayment:
         assert "PAYGO" in data["sms"]["message"]
         assert token in data["sms"]["message"]
 
-    def test_10_dollars_gives_60_days(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Test User", "0888888001", "SN-KH-001", TEST_KEY)
-        cookie = _login()
-        resp = client.post(
+    async def test_10_dollars_gives_60_days(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Payment Test 10",
+            "phone": "0888888001",
+            "device_id": "SN-KH-002",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        resp = await auth_client.post(
             f"/api/customers/{cid}/simulate-payment",
             json={"amount": 10},
-            cookies={"session": cookie},
         )
         assert resp.status_code == 200
         assert resp.json()["days"] == 60
 
-    def test_nonexistent_customer(self):
-        cookie = _login()
-        resp = client.post(
+    async def test_nonexistent_customer(self, auth_client):
+        resp = await auth_client.post(
             "/api/customers/NOEXIST/simulate-payment",
             json={"amount": 5},
-            cookies={"session": cookie},
         )
         assert resp.status_code == 404
 
-    def test_unknown_amount(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Test", "0888888001", "SN-KH-001", TEST_KEY)
-        cookie = _login()
-        resp = client.post(
+    async def test_unknown_amount(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Payment Test Unknown",
+            "phone": "0888888001",
+            "device_id": "SN-KH-003",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        resp = await auth_client.post(
             f"/api/customers/{cid}/simulate-payment",
             json={"amount": 999},
-            cookies={"session": cookie},
         )
         assert resp.status_code == 400
 
-    def test_two_payments_different_tokens(self):
-        from app.db import reset_db, add_customer
-        reset_db()
-        cid = add_customer("Test User", "0888888001", "SN-KH-001", TEST_KEY)
-        cookie = _login()
-        r1 = client.post(
+    async def test_two_payments_different_tokens(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "TwoPay Test",
+            "phone": "0888888001",
+            "device_id": "SN-KH-004",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        r1 = await auth_client.post(
             f"/api/customers/{cid}/simulate-payment",
-            json={"amount": 5}, cookies={"session": cookie},
+            json={"amount": 5},
         )
-        r2 = client.post(
+        r2 = await auth_client.post(
             f"/api/customers/{cid}/simulate-payment",
-            json={"amount": 5}, cookies={"session": cookie},
+            json={"amount": 5},
         )
         assert r1.json()["token"] != r2.json()["token"]
 
 
+# ---------------------------------------------------------------------------
+# Lock Device
+# ---------------------------------------------------------------------------
+
 class TestLockDevice:
-    def test_lock_device(self):
-        from app.db import reset_db, add_customer, get_customer
-        reset_db()
-        cid = add_customer("Test User", "0888888001", "SN-KH-001", TEST_KEY)
-        cookie = _login()
-        resp = client.post(f"/api/customers/{cid}/lock", cookies={"session": cookie})
+    async def test_lock_device(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "Lock Test",
+            "phone": "0888888001",
+            "device_id": "SN-KH-010",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        resp = await auth_client.post(f"/api/customers/{cid}/lock")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
-        customer = get_customer(cid)
-        assert customer["status"] == "locked"
+        # Verify status is locked via GET
+        detail = await auth_client.get(f"/api/customers/{cid}")
+        assert detail.json()["status"] == "locked"
 
-    def test_lock_requires_auth(self):
-        client.cookies.clear()
-        resp = client.post("/api/customers/C001/lock")
+    async def test_lock_requires_auth(self, client):
+        resp = await client.post("/api/customers/C001/lock")
         assert resp.status_code == 401
 
 
+# ---------------------------------------------------------------------------
+# Permanent Unlock
+# ---------------------------------------------------------------------------
+
 class TestPermanentUnlock:
-    def test_returns_9_digit_permanent_token(self):
-        from app.db import reset_db, add_customer, get_customer
-        reset_db()
-        cid = add_customer("Test User", "0888888001", "SN-KH-001", TEST_KEY)
-        cookie = _login()
-        resp = client.post(
+    async def test_returns_9_digit_permanent_token(self, auth_client):
+        resp = await auth_client.post("/api/customers", json={
+            "name": "PermUnlock Test",
+            "phone": "0888888001",
+            "device_id": "SN-KH-020",
+            "secret_key": TEST_KEY,
+        })
+        cid = resp.json()["id"]
+        resp = await auth_client.post(
             f"/api/customers/{cid}/permanent-unlock",
-            cookies={"session": cookie},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -231,11 +309,10 @@ class TestPermanentUnlock:
         assert data["days"] == -1
         assert "sms" in data
         assert "全部结清" in data["sms"]["message"]
+        # Verify status is permanent via GET
+        detail = await auth_client.get(f"/api/customers/{cid}")
+        assert detail.json()["status"] == "permanent"
 
-        customer = get_customer(cid)
-        assert customer["status"] == "permanent"
-
-    def test_requires_auth(self):
-        client.cookies.clear()
-        resp = client.post("/api/customers/C001/permanent-unlock")
+    async def test_requires_auth(self, client):
+        resp = await client.post("/api/customers/C001/permanent-unlock")
         assert resp.status_code == 401

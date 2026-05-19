@@ -42,6 +42,8 @@ app.include_router(config_router)
 
 @app.get("/dashboard")
 async def dashboard(request: Request):
-    if request.cookies.get("session") != "authenticated":
+    from app.redis import session_get
+    sid = request.cookies.get("session")
+    if not sid or await session_get(sid) is None:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(request, "dashboard.html")

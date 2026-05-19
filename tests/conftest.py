@@ -7,6 +7,10 @@ pytest_plugins = ("pytest_asyncio",)
 
 def pytest_configure(config):
     config.option.asyncio_mode = "auto"
+    # Set session-scoped event loop to avoid "different loop" errors
+    # with SQLAlchemy async engine (created at module import time)
+    config.inicfg["asyncio_default_test_loop_scope"] = "session"
+    config.inicfg["asyncio_default_fixture_loop_scope"] = "session"
 
 # ---------------------------------------------------------------------------
 # Monkey-patch openpaygo to fix None-handling bug in _count_is_valid
