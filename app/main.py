@@ -36,6 +36,19 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(lambda c: c.execute(text(
             "ALTER TABLE tokens ADD COLUMN IF NOT EXISTS contract_id VARCHAR(8)"
         )))
+        # Token 管理字段 (Phase 2)
+        for col, col_type in [
+            ("status", "VARCHAR(20) DEFAULT 'UNUSED'"),
+            ("superseded_by", "VARCHAR(8)"),
+            ("voided_at", "TIMESTAMP WITH TIME ZONE"),
+            ("voided_by", "VARCHAR(100)"),
+            ("void_reason", "TEXT"),
+            ("ip_address", "VARCHAR(45)"),
+            ("user_agent", "TEXT"),
+        ]:
+            await conn.run_sync(lambda c, col=col, col_type=col_type: c.execute(text(
+                f"ALTER TABLE tokens ADD COLUMN IF NOT EXISTS {col} {col_type}"
+            )))
     await init_redis()
     init_fernet()
     # 种子支付汇率

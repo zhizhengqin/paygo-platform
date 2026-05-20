@@ -47,6 +47,13 @@ class Token(Base):
     days = Column(Integer, nullable=False)
     amount = Column(Numeric(10, 2), default=0)
     contract_id = Column(String(8), ForeignKey("contracts.id"), nullable=True, index=True)
+    status = Column(String(20), default="UNUSED")  # UNUSED / USED / SUPERSEDED
+    superseded_by = Column(String(8), nullable=True)  # 替换 Token ID
+    voided_at = Column(DateTime(timezone=True), nullable=True)
+    voided_by = Column(String(100), nullable=True)
+    void_reason = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(Text, nullable=True)
     count = Column(Integer, nullable=False)
     generated_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
     expires_at = Column(DateTime(timezone=True), nullable=False,
