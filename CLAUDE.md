@@ -71,9 +71,16 @@
 - 新增模型：`Mfi`, 新增 6 个 Customer 字段
 - 188 tests
 
-### Phase 4：告警中心（原 M8 扩展）
-- **导航 tab**：新增「告警中心」
-- 详见升级计划 Phase 4
+### Phase 4：告警中心 ✅ 已完成 2026-05-20
+- **导航 tab**：新增「告警中心」（第 5 个 tab）
+- 告警规则：3 条种子规则（ALM-001 逾期未还款 P0 / ALM-002 设备通信失联 P1 / ALM-003 Token验证异常 P2）
+- 告警列表：P0(红)/P1(黄)/P2(蓝) 颜色区分，状态图标，按级别+时间排序
+- 处理工作流：pending → claimed → processing → closed
+- 操作按钮：认领/标记解决/升级（认领非 pending 不可/升级 P2→P1→P0）
+- 操作日志时间线（AlertLog 表记录每次 action）
+- 统计卡片：总数/今日/待处理/已关闭
+- 新增：Alert/AlertRule/AlertLog 3 模型，app/routers/alerts.py
+- 198 tests
 
 ### Phase 5-8：仪表盘增强 → 设备地图 → 报表中心 → 系统设置
 - 详见升级计划 Phase 5-8
@@ -89,8 +96,8 @@
 - 缓存：Redis 8（session 管理 + API 响应缓存 + Token 防重放）
 - Token 生成：OpenPAYGO 标准 >=0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
 - 安全：bcrypt（密码哈希）+ Fernet（设备密钥对称加密）+ Redis 滑动窗口限流
-- ORM：SQLAlchemy 2.0 async，**11 张表**（+mfis）
-- 测试：pytest-asyncio，**188 个测试**，真实测试数据库隔离
+- ORM：SQLAlchemy 2.0 async，**14 张表**（+alert_rules/alerts/alert_logs）
+- 测试：pytest-asyncio，**198 个测试**，真实测试数据库隔离
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现
