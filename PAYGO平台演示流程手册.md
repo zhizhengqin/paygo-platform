@@ -365,13 +365,21 @@ draft(草稿) ──审批──→ active(执行中) ──逾期──→ over
 2. 深色终端风格 UI，模拟真实 Dongle 界面
 3. 下拉选择设备 → 显示：密钥/状态/Count/继电器
 
+![控制器设备界面](12-controller-sokheng.png)
+
 **模拟操作流程**：
 ```
 1. 在平台完成一笔模拟支付 → 获得 9 位 Token
 2. 切换到控制器页面 → 选择对应设备
 3. 输入 9 位 Token → 点击「验证 Token」
 4. ✓ 验证成功 · +30 天 → 继电器 ● 供电中
+
+![Token验证成功](13-controller-validated.png)
+
 5. 再次输入同一 Token → ✗ Token 已使用（防重放）
+
+![防重放拒绝](14-controller-replay.png)
+
 6. 结清合同 → 获得 DISABLE_PAYG Token
 7. 输入 DISABLE_PAYG Token → ✓✓ 永久解锁
 ```
