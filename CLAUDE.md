@@ -132,9 +132,29 @@
 运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置
 ```
 
-### 原型阶段暂不做
-- M2 Bakong 支付、M3 SMS 网关、M4 设备控制器（均需外部系统对接，仅模拟）
-- AWS 云部署 / K8s / Kafka / EMQX（原型用 Docker Compose + BackgroundTasks + DB 模拟）
+### 原型阶段暂不做（不可实施清单）
+
+以下功能即使部署到云也无法真实运行，原因如下：
+
+| 功能 | 原因 | 原型替代方案 |
+|:---|:---|:---|
+| Bakong KHQR 支付 | 需柬埔寨国家银行 API 权限 + HMAC 签名密钥 | 页面"模拟支付"按钮 → 手动确认到账 |
+| SMS SMPP 网关 | 需 Cellcard/Smart 运营商 SMPP 企业账号 | 弹窗展示短信内容 + DB 记录 |
+| MQTT/EMQX 设备通信 | 需物理硬件控制板（ESP32/Dongle）配合 | DB 模拟设备状态 + 手动录入遥测 |
+| MFI CBS 实时同步 | 需 MFI 核心银行系统 API + VPN 专线 | 管理后台手动录入客户/合同 |
+| AWS KMS/Vault 密钥管理 | 需 AWS 账号 + Vault 集群 | Fernet 本地加密（环境变量管理主密钥） |
+| TLS 1.3/mTLS | 需域名 + SSL 证书 + CA 基础设施 | HTTP 明文（本地开发/内网部署） |
+| Flutter Mobile App | 独立项目，需 Android/iOS 开发 | Web 端 Jinja2 模板（响应式） |
+| Prometheus/Grafana/OpenSearch | 需 K8s 集群 + 持久化存储 | Python logging 模块 + 结构化日志 |
+| EKS/K8s/Terraform | 需 AWS 账号 + 运维基础设施 | Docker Compose 本地部署 |
+
+### 云部署就绪项 ✅
+- JWT 认证（双模式：Bearer Token + Cookie，兼容 Session）
+- API 限流（Redis 滑动窗口）
+- 密码 bcrypt 哈希 + 设备密钥 Fernet 加密
+- 健康检查端点 `/api/v1/health`
+- 完整 RBAC 用户模型（16 张表，200 tests）
+- 所有外部依赖通过环境变量配置（12+ 变量）
 
 ## 技术栈
 - 后端框架：Python FastAPI
