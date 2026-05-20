@@ -148,7 +148,13 @@ function switchTab(tab) {
     const keygenSection = document.querySelector('.keygen-section');
     if (keygenSection) {
       keygenSection.innerHTML = `
-        <div class="keygen-title">密钥生成器</div>
+        <div class="keygen-title">客户筛选</div>
+        <div style="padding:8px 12px;">
+          <input type="text" id="customerSearch" placeholder="搜索姓名/电话..." 
+            style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;margin-bottom:6px;font-family:inherit;"
+            oninput="searchCustomers()">
+        </div>
+        <div class="keygen-title" style="margin-top:8px;">密钥生成器</div>
         <button class="keygen-btn" onclick="generateKeys()">生成 5 个设备密钥</button>
         <div class="keygen-list" id="keygenList"></div>
       `;
@@ -340,39 +346,55 @@ function renderTxTable(transactions) {
 async function loadCustomers() {
   const resp = await fetch('/api/customers');
   const customers = await resp.json();
-  const container = document.getElementById('customerItems');
+  renderCustomerList(customers);
   document.getElementById('customerCount').textContent = customers.length;
-  if (customers.length === 0) {
-    container.innerHTML = '<p style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">暂无客户</p>';
-    return;
-  }
-  container.innerHTML = customers.map(c => `
-    <div class="customer-item ${c.id === selectedCustomerId ? 'active' : ''}"
-         onclick="selectCustomer('${c.id}')">
-      <div class="name">${STATUS_DOT[c.status] || '⚪'} ${escapeHtml(c.name)}</div>
-      <div class="meta">${c.phone} · ${c.device_id}</div>
-    </div>
-  `).join('');
 }
 
-// ---- 客户详情 ----
+// ---- 客户详情 (360视图) ----
 async function selectCustomer(id) {
   selectedCustomerId = id;
-  document.querySelectorAll('.nav-tab').forEach(el => {
+  document.querySelectorAll('.nav-tab').forEach(function(el) {
     el.classList.toggle('active', el.dataset.tab === 'customers');
   });
   document.querySelector('.main-layout').classList.remove('sidebar-hidden');
   await loadCustomers();
-  const resp = await fetch(`/api/customers/${id}`);
-  const c = await resp.json();
 
-  const smsResp = await fetch('/api/sms?customer_id=' + encodeURIComponent(id));
-  const smsRecords = await smsResp.json();
+  const resp = await fetch('/api/customers/' + encodeURIComponent(id) + '/360');
+  const view = await resp.json();
+  const c = view.customer;
 
   const initials = c.name.charAt(0);
   const statusLabel = STATUS_MAP[c.status] || c.status;
   const statusClass = STATUS_CLASS[c.status] || '';
   const statusDot = STATUS_DOT[c.status] || '';
+
+  const contractsHtml = view.contracts && view.contracts.length > 0
+    ? view.contracts.map(function(ct) {
+        return '<div class="customer-item" onclick="switchTab(\'contracts\');selectContract(\'' + ct.id + '\')" style="cursor:pointer;margin:3px 0;padding:8px 12px;">' +
+          '<span style="font-weight:500;">' + escapeHtml(ct.contract_no) + '</span>' +
+          '<span style="float:right;color:#64748b;font-size:12px;">' + ct.status + ' · $' + ct.loan_amount.toFixed(0) + '</span></div>';
+      }).join('')
+    : '<p style="color:#94a3b8;font-size:12px;padding:8px;">暂无合同</p>';
+
+  const tokensHtml = view.tokens && view.tokens.length > 0
+    ? '<div style="border-left:2px solid #e2e8f0;padding-left:12px;">' +
+      view.tokens.slice(0,15).map(function(t) {
+        var dot = t.status === 'SUPERSEDED' ? '🔴' : t.status === 'USED' ? '🟢' : '⚪';
+        return '<div style="margin:4px 0;font-size:12px;line-height:1.6;">' +
+          dot + ' <code style="background:#f1f5f9;padding:1px 4px;border-radius:2px;font-size:11px;">' + t.token + '</code>' +
+          ' <span style="color:#64748b;">' + (t.days === -1 ? '永久' : t.days+'天') + '</span>' +
+          ' <span style="color:#94a3b8;">' + (t.generated_at || '') + '</span></div>';
+      }).join('') + '</div>'
+    : '<p style="color:#94a3b8;font-size:12px;padding:8px;">暂无 Token</p>';
+
+  var tagsHtml = '';
+  if (c.tags && c.tags.length > 0) {
+    tagsHtml = c.tags.map(function(t) {
+      return '<span class="tag-chip" style="display:inline-block;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:12px;font-size:11px;margin:2px;">' + escapeHtml(t) + ' <a href="#" onclick="removeTag(\'' + c.id + '\',\'' + t + '\');return false;" style="color:#dc2626;text-decoration:none;">×</a></span>';
+    }).join('');
+  } else {
+    tagsHtml = '<span style="color:#94a3b8;font-size:12px;">暂无标签</span>';
+  }
 
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-card">
@@ -381,21 +403,43 @@ async function selectCustomer(id) {
         <div>
           <h2>${escapeHtml(c.name)}</h2>
           <span class="status-badge ${statusClass}">${statusDot} ${statusLabel}</span>
+          ${c.tags && c.tags.length > 0 ? ' ' + c.tags.map(function(t) { return '<span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:8px;font-size:10px;">' + escapeHtml(t) + '</span>'; }).join(' ') : ''}
         </div>
       </div>
 
       <div class="detail-body">
         <div class="detail-row"><span class="label">电话</span><span class="value">${c.phone}</span></div>
         <div class="detail-row"><span class="label">设备编号</span><span class="value">${c.device_id}</span></div>
-        <div class="detail-row"><span class="label">设备密钥</span><span class="value-mono">${c.secret_key.substring(0,12)}…</span></div>
+        <div class="detail-row"><span class="label">设备密钥</span><span class="value-mono">${(c.secret_key||'').substring(0,12)}…</span></div>
         <div class="detail-row"><span class="label">Token 计数</span><span class="value">${c.count}</span></div>
+        ${c.address ? '<div class="detail-row"><span class="label">地址</span><span class="value">' + escapeHtml(c.address) + '</span></div>' : ''}
+        ${c.id_number ? '<div class="detail-row"><span class="label">身份证</span><span class="value">' + escapeHtml(c.id_number) + '</span></div>' : ''}
+        ${c.gps_latitude ? '<div class="detail-row"><span class="label">GPS</span><span class="value">' + c.gps_latitude + ', ' + c.gps_longitude + '</span></div>' : ''}
+        ${view.mfi_name ? '<div class="detail-row"><span class="label">MFI</span><span class="value">' + escapeHtml(view.mfi_name) + '</span></div>' : ''}
         <div class="detail-row"><span class="label">创建日期</span><span class="value">${c.created_at}</span></div>
       </div>
 
       <div class="detail-section">
+        <h4>标签管理</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:4px;">
+          ${tagsHtml}
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="addTag('${c.id}')">+ 添加标签</button>
+      </div>
+
+      <div class="detail-section">
         <h4>模拟支付</h4>
-        <p style="color:#94a3b8;font-size:12px;margin-bottom:10px;">模拟客户通过 Bakong 完成还款</p>
         <button class="btn btn-primary" onclick="showSimulatePaymentModal('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">模拟支付</button>
+      </div>
+
+      <div class="detail-section">
+        <h4>合同列表</h4>
+        ${contractsHtml}
+      </div>
+
+      <div class="detail-section">
+        <h4>Token 历史</h4>
+        ${tokensHtml}
       </div>
 
       <div class="detail-body">
@@ -404,19 +448,6 @@ async function selectCustomer(id) {
           <button class="btn btn-warning" onclick="showPermanentUnlockConfirm('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">永久解锁</button>
           <button class="btn btn-outline" style="color:#dc2626;" onclick="showDeleteModal('${c.id}', '${escapeHtml(c.name).replace(/'/g, "\\'")}')">删除客户</button>
         </div>
-      </div>
-
-      <div class="sms-log" style="padding:0 24px 20px;">
-        <h4>短信记录</h4>
-        ${smsRecords.length === 0
-          ? '<p style="color:#94a3b8;font-size:12px;">暂无记录</p>'
-          : smsRecords.map(r => `
-            <div class="sms-entry">
-              <div class="sms-meta">收件人: ${r.to} · ${r.sent_at}</div>
-              <div class="sms-text">${r.message}</div>
-            </div>
-          `).join('')
-        }
       </div>
     </div>
   `;
@@ -812,6 +843,64 @@ async function showLoanProductModal() {
     </div>
   `;
 }
+
+// ---- 标签管理 ----
+async function addTag(cid) {
+  var tag = prompt('输入标签名（如：VIP、高风险、投诉频繁、新客户）：');
+  if (!tag) return;
+  var resp = await fetch('/api/customers/' + encodeURIComponent(cid) + '/360');
+  var view = await resp.json();
+  var currentTags = view.customer.tags || [];
+  if (currentTags.indexOf(tag) >= 0) { showToast('标签已存在'); return; }
+  var newTags = currentTags.concat([tag]);
+  await fetch('/api/customers/' + encodeURIComponent(cid) + '/tags', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tags: newTags})
+  });
+  selectCustomer(cid);
+}
+
+async function removeTag(cid, tag) {
+  var resp = await fetch('/api/customers/' + encodeURIComponent(cid) + '/360');
+  var view = await resp.json();
+  var newTags = (view.customer.tags || []).filter(function(t) { return t !== tag; });
+  await fetch('/api/customers/' + encodeURIComponent(cid) + '/tags', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tags: newTags})
+  });
+  selectCustomer(cid);
+}
+
+// ---- 客户搜索 ----
+var customerSearchTimeout = null;
+async function searchCustomers() {
+  clearTimeout(customerSearchTimeout);
+  customerSearchTimeout = setTimeout(async function() {
+    var q = document.getElementById('customerSearch').value.trim();
+    var url = q ? '/api/customers?search=' + encodeURIComponent(q) : '/api/customers';
+    var resp = await fetch(url);
+    var customers = await resp.json();
+    renderCustomerList(customers);
+  }, 300);
+}
+
+function renderCustomerList(customers) {
+  var container = document.getElementById('customerItems');
+  document.getElementById('customerCount').textContent = customers.length;
+  if (customers.length === 0) {
+    container.innerHTML = '<p style="color:#94a3b8;font-size:13px;text-align:center;padding:20px;">无匹配客户</p>';
+    return;
+  }
+  container.innerHTML = customers.map(function(c) {
+    var tagStr = c.tags && c.tags.length > 0 ? ' · ' + c.tags.join(',') : '';
+    return '<div class="customer-item ' + (c.id === selectedCustomerId ? 'active' : '') + '" onclick="selectCustomer(\'' + c.id + '\')">' +
+      '<div class="name">' + (STATUS_DOT[c.status] || '⚪') + ' ' + escapeHtml(c.name) + '<span style="font-size:10px;color:#94a3b8;">' + tagStr + '</span></div>' +
+      '<div class="meta">' + c.phone + ' · ' + c.device_id + '</div></div>';
+  }).join('');
+}
+
 // ---- Token 管理 ----
 let selectedTokenId = null;
 
