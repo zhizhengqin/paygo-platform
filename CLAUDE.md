@@ -61,9 +61,15 @@
 - **Token 模型**：新增 status/superseded_by/voided_at/voided_by/void_reason/ip_address/user_agent（7 字段）
 - 178 tests
 
-### Phase 3：客户 360 视图与 MFI 管理（原 M6）
-- **导航 tab**：扩展「客户管理」（MFI 选择器 + 360 聚合视图）
-- 详见升级计划 Phase 3
+### Phase 3：客户 360 视图与 MFI 管理 ✅ 已完成 2026-05-20
+- **导航 tab**：增强「客户管理」（搜索筛选 + 360 聚合视图 + 标签管理）
+- 客户扩展字段：地址/GPS/身份证/MFI 关联/标签（JSON）
+- 客户 360 聚合视图：合同卡片（可点击跳转）+ Token 时间线（15条）+ MFI 名称
+- 标签管理：添加/删除标签（VIP/高风险/投诉频繁/新客户）
+- 搜索筛选：姓名/电话实时搜索（300ms debounce）
+- MFI 机构管理：CRUD API（LOLC/PRASAC/ACLEDA）
+- 新增模型：`Mfi`, 新增 6 个 Customer 字段
+- 188 tests
 
 ### Phase 4：告警中心（原 M8 扩展）
 - **导航 tab**：新增「告警中心」
@@ -83,8 +89,8 @@
 - 缓存：Redis 8（session 管理 + API 响应缓存 + Token 防重放）
 - Token 生成：OpenPAYGO 标准 >=0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
 - 安全：bcrypt（密码哈希）+ Fernet（设备密钥对称加密）+ Redis 滑动窗口限流
-- ORM：SQLAlchemy 2.0 async，**10 张表**（customers, tokens, sms_records, payment_rates, device_states, loan_products, contracts, repayment_schedules, repayment_records）
-- 测试：pytest-asyncio，**178 个测试**，真实测试数据库隔离
+- ORM：SQLAlchemy 2.0 async，**11 张表**（+mfis）
+- 测试：pytest-asyncio，**188 个测试**，真实测试数据库隔离
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现

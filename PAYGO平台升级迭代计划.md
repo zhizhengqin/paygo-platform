@@ -252,7 +252,7 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 
 ---
 
-## Phase 3：客户 360 视图
+## Phase 3：客户 360 视图 ✅ 已完成 2026-05-20
 
 **目标**：客户详情从简单信息卡升级为一站式 360 度聚合视图
 
@@ -291,6 +291,19 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 
 - 新增：客户360视图、标签管理、MFI CRUD、筛选逻辑，预计 +10 tests
 - 累计测试数：~176
+
+### 实际完成
+
+| 项目 | 计划 | 实际 |
+|:---|:---|:---|
+| 新增测试 | +10 | +10 (test_store.py: +6, test_customers_api.py: +4) |
+| 累计测试 | ~176 | 188 |
+| Customer 新字段 | address/gps/id_number/mfi_id/tags (6 字段) | 一致（JSON 类型存储 tags） |
+| 新增 Mfi 模型 | id/name/branch/contact_info/api_endpoint/status | 一致 |
+| 新增 store 函数 | get_customers_filtered/get_customer_360/update_customer_tags/add_mfi/get_mfis | 一致 |
+| 新增 API | GET customers(筛选)/GET 360/PUT tags/GET mfis/POST mfis | 一致 |
+| UI 增强 | 合同卡片/Token时间线/标签管理/搜索筛选 | 一致 |
+| 关键差异 | — | `_customer_to_dict` 扩展了 6 个新字段；360 视图通过单个聚合端点获取完整数据 |
 
 ---
 
@@ -508,7 +521,7 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 | Phase 0 | 安全基础 | — | +10→+17 | 157 | bcrypt+限流+日志 | 安全架构底线 | ✅ |
 | Phase 1 | 合同管理补完 | — | +15→+8 | 165 | 还款跟踪闭环 | 还款记录表对齐架构 | ✅ |
 | Phase 2 | Token 管理 | Token 管理 | +12→+13 | 178 | Token 全生命周期 | 审计字段对齐架构 | ✅ |
-| Phase 3 | 客户 360 | — | +10 | ~176 | 单客户聚合视图 | MFI表+缓存策略 | ⏳ |
+| Phase 3 | 客户 360 | — | +10→+10 | 188 | 单客户聚合视图 | MFI表+缓存策略 | ✅ |
 | Phase 4 | 告警中心 | 告警中心 | +18 | ~194 | 告警+工单工作流 | 结构化审计日志 | ⏳ |
 | Phase 5 | 仪表盘增强 | — | +6 | ~200 | 多维度数据驾驶舱 | 业务缓存增强 | ⏳ |
 | Phase 6 | 设备地图 | 设备地图 | +4 | ~204 | GIS 可视化 | — | ⏳ |
