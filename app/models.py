@@ -29,6 +29,12 @@ class Customer(Base):
     status = Column(String(20), default="locked")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
     locked_at = Column(DateTime(timezone=True), nullable=True)
+    address = Column(Text, nullable=True)
+    gps_latitude = Column(Numeric(10, 8), nullable=True)
+    gps_longitude = Column(Numeric(11, 8), nullable=True)
+    id_number = Column(String(50), nullable=True)
+    mfi_id = Column(String(8), ForeignKey("mfis.id"), nullable=True, index=True)
+    tags = Column(JSON, nullable=True, default=list)
 
     tokens = relationship("Token", back_populates="customer", lazy="selectin",
                           cascade="all, delete-orphan")
@@ -36,6 +42,19 @@ class Customer(Base):
                                cascade="all, delete-orphan")
     contracts = relationship("Contract", back_populates="customer", lazy="selectin",
                              cascade="all, delete-orphan")
+
+
+class Mfi(Base):
+    """MFI 小额信贷机构"""
+    __tablename__ = "mfis"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("MF"))
+    name = Column(String(100), nullable=False)
+    branch = Column(String(100), nullable=True)
+    contact_info = Column(Text, nullable=True)
+    api_endpoint = Column(String(255), nullable=True)
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
 
 
 class Token(Base):

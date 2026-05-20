@@ -50,6 +50,18 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(lambda c, col=col, col_type=col_type: c.execute(text(
                 f"ALTER TABLE tokens ADD COLUMN IF NOT EXISTS {col} {col_type}"
             )))
+        # Phase 3 — Customer 扩展字段 + Mfi 表
+        for col, col_type in [
+            ("address", "TEXT"),
+            ("gps_latitude", "NUMERIC(10,8)"),
+            ("gps_longitude", "NUMERIC(11,8)"),
+            ("id_number", "VARCHAR(50)"),
+            ("mfi_id", "VARCHAR(8)"),
+            ("tags", "JSONB DEFAULT '[]'::jsonb"),
+        ]:
+            await conn.run_sync(lambda c, col=col, col_type=col_type: c.execute(text(
+                f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col} {col_type}"
+            )))
     await init_redis()
     init_fernet()
     # 种子支付汇率
