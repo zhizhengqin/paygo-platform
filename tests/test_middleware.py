@@ -7,11 +7,21 @@ from app.redis import init_redis, close_redis
 
 
 @pytest.fixture(scope="module", autouse=True)
-def enable_rate_limit():
-    """为中间件测试启用限流，与其他测试模块隔离。"""
+async def isolate_rate_limit_tests():
+    """为中间件测试启用限流，并在测试结束后清理 Redis 限流/锁定键，
+    避免污染后续测试模块。"""
+    from app.redis import get_redis
+
     os.environ["RATE_LIMIT_ENABLED"] = "1"
     yield
     os.environ["RATE_LIMIT_ENABLED"] = "0"
+    # 清理测试产生的 Redis 键
+    r = get_redis()
+    if r:
+        for pattern in ("ratelimit:*", "login_failed:*", "login_locked:*"):
+            keys = await r.keys(pattern)
+            if keys:
+                await r.delete(*keys)
 
 
 @pytest.fixture(scope="session", autouse=True)
