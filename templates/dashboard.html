@@ -1470,7 +1470,7 @@ async function showSettings() {
         </div>
         <div class="dash-table-box">
           <h4>MFI 机构 (${mfis.length})</h4>
-          <div style="max-height:180px;overflow-y:auto;">${mfis.map(function(m){return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">'+escapeHtml(m.name)+' <span style="color:#94a3b8;font-size:11px;">'+escapeHtml(m.branch||'')+'</span></div>';}).join('')}</div>
+          <div style="max-height:180px;overflow-y:auto;">${mfis.map(function(m){return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">'+escapeHtml(m.name)+' <span style="color:#94a3b8;font-size:11px;">'+escapeHtml(m.branch||'')+'</span> <a href="#" onclick="deleteMfi(\''+m.id+'\');return false;" style="color:#dc2626;font-size:11px;margin-left:8px;">删除</a></div>';}).join('')}</div>
           <div style="margin-top:8px;display:flex;gap:4px;">
             <input type="text" id="newMfiName" placeholder="MFI名称" style="flex:1;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
             <input type="text" id="newMfiBranch" placeholder="支行" style="width:80px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
@@ -1481,11 +1481,16 @@ async function showSettings() {
       <div class="dash-grid" style="margin-bottom:24px;">
         <div class="dash-table-box">
           <h4>支付汇率</h4>
-          <div style="max-height:150px;overflow-y:auto;">${rates.map(function(r){return '<div style="padding:3px 0;font-size:13px;">$'+r.amount.toFixed(2)+' → '+r.days+' 天</div>';}).join('')}</div>
+          <div style="margin-bottom:8px;display:flex;gap:4px;">
+            <input type="number" id="newRateAmount" placeholder="$金额" step="0.01" min="1" style="width:70px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+            <input type="number" id="newRateDays" placeholder="天数" min="1" style="width:60px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+            <button class="btn btn-primary btn-sm" onclick="addRate()">新增汇率</button>
+          </div>
+          <div style="max-height:120px;overflow-y:auto;">${rates.map(function(r){return '<div style="padding:3px 0;font-size:13px;">$'+r.amount.toFixed(2)+' → '+r.days+' 天 <a href="#" onclick="deleteRate('+r.id+');return false;" style="color:#dc2626;font-size:11px;margin-left:8px;">删除</a></div>';}).join('')}</div>
         </div>
         <div class="dash-table-box">
           <h4>用户管理 (${users.length})</h4>
-          <div style="max-height:120px;overflow-y:auto;">${users.map(function(u){return '<div style="padding:3px 0;font-size:13px;">'+escapeHtml(u.username)+' <span style="color:#94a3b8;font-size:11px;">('+u.role+')</span></div>';}).join('')}</div>
+          <div style="max-height:120px;overflow-y:auto;">${users.map(function(u){return '<div style="padding:3px 0;font-size:13px;">'+escapeHtml(u.username)+' <span style="color:#94a3b8;font-size:11px;">('+u.role+')</span> <a href="#" onclick="deleteUser(\''+u.id+'\');return false;" style="color:#dc2626;font-size:11px;margin-left:8px;">删除</a></div>';}).join('')}</div>
           <div style="margin-top:8px;display:flex;gap:4px;">
             <input type="text" id="newUsername" placeholder="用户名" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
             <input type="password" id="newUserPass" placeholder="密码" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
@@ -1515,6 +1520,40 @@ async function addUserUI() {
   if (!u||!p) { showToast('请输入用户名和密码'); return; }
   await fetch('/api/settings/users', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,role:r})});
   showToast('用户已添加'); showSettings();
+}
+
+// ---- 系统设置 — 删除/新增辅助函数 ----
+async function deleteMfi(mid) {
+  if (!confirm('确定删除该 MFI 机构吗？关联该 MFI 的客户将失去归属。')) return;
+  var resp = await fetch('/api/mfis/' + encodeURIComponent(mid), { method: 'DELETE' });
+  if (!resp.ok) { showToast('删除失败'); return; }
+  showToast('MFI 已删除'); showSettings();
+}
+
+async function deleteRate(rid) {
+  if (!confirm('确定删除该汇率吗？')) return;
+  var resp = await fetch('/api/settings/payment-rates/' + rid, { method: 'DELETE' });
+  if (!resp.ok) { showToast('删除失败'); return; }
+  showToast('汇率已删除'); showSettings();
+}
+
+async function addRate() {
+  var amount = parseFloat(document.getElementById('newRateAmount').value);
+  var days = parseInt(document.getElementById('newRateDays').value);
+  if (!amount || !days) { showToast('请输入金额和天数'); return; }
+  var resp = await fetch('/api/settings/payment-rates', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({amount: amount, days: days})
+  });
+  if (!resp.ok) { var err = await resp.json(); showToast('添加失败: ' + (err.detail || '')); return; }
+  showToast('汇率已添加'); showSettings();
+}
+
+async function deleteUser(uid) {
+  if (!confirm('确定删除该用户吗？')) return;
+  var resp = await fetch('/api/settings/users/' + encodeURIComponent(uid), { method: 'DELETE' });
+  if (!resp.ok) { showToast('删除失败'); return; }
+  showToast('用户已删除'); showSettings();
 }
 </script>
 {% endblock %}

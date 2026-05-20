@@ -51,8 +51,23 @@ class RateUpdate(BaseModel):
 async def add_rate(body: RateUpdate, request: Request, db: AsyncSession = Depends(get_db)):
     await _check_auth(request)
     from decimal import Decimal
+    # 检查重复金额
+    existing = await db.execute(select(PaymentRate).where(PaymentRate.amount == Decimal(str(body.amount))))
+    if existing.scalar():
+        raise HTTPException(400, f"金额 ${body.amount:.2f} 的汇率已存在")
     r = PaymentRate(amount=Decimal(str(body.amount)), days=body.days)
     db.add(r)
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/payment-rates/{rid}")
+async def delete_rate(rid: int, request: Request, db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    r = await db.get(PaymentRate, rid)
+    if not r:
+        raise HTTPException(404, "汇率不存在")
+    await db.delete(r)
     await db.commit()
     return {"ok": True}
 
@@ -105,3 +120,14 @@ async def create_user(body: UserCreate, request: Request, db: AsyncSession = Dep
     db.add(u)
     await db.commit()
     return {"id": u.id, "username": u.username}
+
+
+@router.delete("/users/{uid}")
+async def delete_user(uid: str, request: Request, db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    u = await db.get(User, uid)
+    if not u:
+        raise HTTPException(404, "用户不存在")
+    await db.delete(u)
+    await db.commit()
+    return {"ok": True}

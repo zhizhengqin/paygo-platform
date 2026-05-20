@@ -11,8 +11,9 @@ from app.store import (
     add_sms_record, get_sms_records, get_days_for_amount,
     DuplicateDeviceError, DuplicateSecretKeyError,
     get_customers_filtered, get_customer_360,
-    update_customer_tags, add_mfi, get_mfis,
+    update_customer_tags, add_mfi, get_mfis, delete_mfi,
 )
+from app.models import Mfi
 from app.redis import cache_get, cache_set, cache_delete, session_get
 from openpaygo import generate_token, TokenType
 
@@ -336,3 +337,12 @@ async def create_mfi(request: Request, body: MfiCreate,
     await _check_auth(request)
     mid = await add_mfi(db, body.name, body.branch)
     return {"id": mid, "name": body.name, "branch": body.branch}
+
+
+@router.delete("/mfis/{mid}")
+async def delete_mfi_route(mid: str, request: Request, db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    ok = await delete_mfi(db, mid)
+    if not ok:
+        raise HTTPException(404, "MFI 不存在")
+    return {"ok": True}

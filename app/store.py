@@ -980,12 +980,26 @@ async def update_customer_tags(db: AsyncSession, customer_id: str, tag_list: lis
 
 
 async def add_mfi(db: AsyncSession, name: str, branch: str = "") -> str:
-    """新增 MFI 机构"""
+    """新增 MFI 机构（重复名称返回已有 ID）"""
+    existing = await db.execute(select(Mfi).where(Mfi.name == name))
+    row = existing.scalar()
+    if row:
+        return row.id
     mid = _new_id("MF")
     m = Mfi(id=mid, name=name, branch=branch)
     db.add(m)
     await db.commit()
     return mid
+
+
+async def delete_mfi(db: AsyncSession, mid: str) -> bool:
+    """删除 MFI 机构"""
+    m = await db.get(Mfi, mid)
+    if not m:
+        return False
+    await db.delete(m)
+    await db.commit()
+    return True
 
 
 async def get_mfis(db: AsyncSession, status: str = None) -> list[dict]:
