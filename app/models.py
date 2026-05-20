@@ -33,6 +33,8 @@ class Customer(Base):
                           cascade="all, delete-orphan")
     sms_records = relationship("SmsRecord", back_populates="customer", lazy="selectin",
                                cascade="all, delete-orphan")
+    contracts = relationship("Contract", back_populates="customer", lazy="selectin",
+                             cascade="all, delete-orphan")
 
 
 class Token(Base):
@@ -86,3 +88,58 @@ class DeviceState(Base):
     remaining_days = Column(Integer, default=0)
     last_update = Column(Date, nullable=True)
     status = Column(String(20), default="unbound")
+
+
+class LoanProduct(Base):
+    """贷款产品配置表"""
+    __tablename__ = "loan_products"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("LP"))
+    name = Column(String(100), nullable=False)
+    capacity_kw = Column(Numeric(5, 2), nullable=False)
+    term_months = Column(Integer, nullable=False)
+    interest_rate = Column(Numeric(5, 2), nullable=False)
+    down_payment_pct = Column(Numeric(5, 2), nullable=False)
+    total_amount = Column(Numeric(12, 2), nullable=False)
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+
+
+class Contract(Base):
+    """合同表"""
+    __tablename__ = "contracts"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("CT"))
+    contract_no = Column(String(30), nullable=False, unique=True)
+    customer_id = Column(String(8), ForeignKey("customers.id"), nullable=False, index=True)
+    product_id = Column(String(8), ForeignKey("loan_products.id"), nullable=False)
+    down_payment = Column(Numeric(12, 2), nullable=False)
+    loan_amount = Column(Numeric(12, 2), nullable=False)
+    monthly_payment = Column(Numeric(10, 2), nullable=False)
+    status = Column(String(20), default="draft")
+    start_date = Column(Date, nullable=True)
+    end_date = Column(Date, nullable=True)
+    remaining_days = Column(Integer, default=0)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+
+    customer = relationship("Customer", back_populates="contracts")
+    schedules = relationship("RepaymentSchedule", back_populates="contract",
+                             lazy="selectin", cascade="all, delete-orphan")
+
+
+class RepaymentSchedule(Base):
+    """还款计划表"""
+    __tablename__ = "repayment_schedules"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("RS"))
+    contract_id = Column(String(8), ForeignKey("contracts.id"), nullable=False, index=True)
+    period_no = Column(Integer, nullable=False)
+    due_date = Column(Date, nullable=False)
+    principal = Column(Numeric(10, 2), nullable=False)
+    interest = Column(Numeric(10, 2), nullable=False)
+    total = Column(Numeric(10, 2), nullable=False)
+    balance = Column(Numeric(12, 2), nullable=False)
+    status = Column(String(20), default="pending")
+
+    contract = relationship("Contract", back_populates="schedules")
