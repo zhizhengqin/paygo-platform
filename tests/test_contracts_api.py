@@ -156,3 +156,70 @@ async def test_get_contract_list(auth_client):
     resp = await auth_client.get("/api/contracts")
     assert resp.status_code == 200
     assert isinstance(resp.json(), list)
+
+
+import secrets
+
+
+@pytest.mark.asyncio
+async def test_pay_schedule(auth_client):
+    """还款一期 → 生成 Token"""
+    # 创建客户
+    resp = await auth_client.post("/api/customers", json={
+        "name": "Pay Test", "phone": "010000100",
+        "device_id": f"DEV-{secrets.token_hex(3)}",
+        "secret_key": secrets.token_hex(16),
+    })
+    cid = resp.json()["id"]
+
+    # 创建合同 + 审批
+    products = (await auth_client.get("/api/loan-products")).json()
+    c_resp = await auth_client.post("/api/contracts", json={
+        "customer_id": cid, "product_id": products[0]["id"],
+    })
+    ct_id = c_resp.json()["id"]
+    approved = (await auth_client.put(f"/api/contracts/{ct_id}/approve")).json()
+    schedule_id = approved["schedules"][0]["id"]
+
+    # 还款
+    resp = await auth_client.post(
+        f"/api/contracts/{ct_id}/pay",
+        json={"schedule_id": schedule_id, "amount": approved["schedules"][0]["total"]},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["token"] is not None
+    assert len(data["token"]) == 9
+
+
+@pytest.mark.asyncio
+async def test_check_overdue(auth_client):
+    """检查逾期 — 返回逾期条数"""
+    resp = await auth_client.post("/api/contracts/check-overdue")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "count" in data
+
+
+@pytest.mark.asyncio
+async def test_settle_contract(auth_client):
+    """结清合同 → 永久解锁"""
+    resp = await auth_client.post("/api/customers", json={
+        "name": "Settle Test", "phone": "010000200",
+        "device_id": f"DEV-{secrets.token_hex(3)}",
+        "secret_key": secrets.token_hex(16),
+    })
+    cid = resp.json()["id"]
+
+    products = (await auth_client.get("/api/loan-products")).json()
+    c_resp = await auth_client.post("/api/contracts", json={
+        "customer_id": cid, "product_id": products[0]["id"],
+    })
+    ct_id = c_resp.json()["id"]
+    await auth_client.put(f"/api/contracts/{ct_id}/approve")
+
+    resp = await auth_client.post(f"/api/contracts/{ct_id}/settle")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "closed"
+    assert data["token"] is not None

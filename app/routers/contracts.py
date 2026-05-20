@@ -14,6 +14,7 @@ from app.store import (
     update_loan_product, disable_loan_product,
     add_contract, get_contracts, get_contract, get_contract_with_schedules,
     approve_contract, update_contract_status, calc_amortization,
+    mark_schedule_paid, check_overdue_schedules, settle_contract,
 )
 from app.routers.customers import _check_auth
 
@@ -47,6 +48,11 @@ class ContractCreate(BaseModel):
 
 class StatusUpdate(BaseModel):
     status: str
+
+
+class ContractPay(BaseModel):
+    schedule_id: str
+    amount: float
 
 
 # ---- 贷款产品 API ----
@@ -168,3 +174,33 @@ async def api_update_contract_status(cid: str, body: StatusUpdate,
     if not ok:
         raise HTTPException(400, "状态变更失败（合同不存在或无效状态）")
     return await get_contract(db, cid)
+
+
+@router.post("/contracts/{cid}/pay")
+async def api_pay_schedule(cid: str, body: ContractPay, request: Request,
+                           db: AsyncSession = Depends(get_db)):
+    """还款一期：标记还款计划为已付 + 生成 ADD_TIME Token"""
+    await _check_auth(request)
+    result = await mark_schedule_paid(db, body.schedule_id, Decimal(str(body.amount)))
+    if not result:
+        raise HTTPException(400, "还款失败（计划不存在或已付）")
+    return result
+
+
+@router.post("/contracts/check-overdue")
+async def api_check_overdue(request: Request, db: AsyncSession = Depends(get_db)):
+    """手动触发逾期检测"""
+    await _check_auth(request)
+    count = await check_overdue_schedules(db)
+    return {"count": count}
+
+
+@router.post("/contracts/{cid}/settle")
+async def api_settle_contract(cid: str, request: Request,
+                              db: AsyncSession = Depends(get_db)):
+    """结清合同：生成 DISABLE_PAYG Token + 永久解锁设备"""
+    await _check_auth(request)
+    result = await settle_contract(db, cid)
+    if not result:
+        raise HTTPException(400, "结清失败（合同不存在或状态不正确）")
+    return result
