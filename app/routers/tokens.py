@@ -64,11 +64,15 @@ async def api_reissue_token(tid: str, body: ReissueRequest, request: Request,
 @router.post("/{tid}/void")
 async def api_void_token(tid: str, body: VoidRequest, request: Request,
                          db: AsyncSession = Depends(get_db)):
-    await _check_auth(request)
+    auth_payload = await _check_auth(request)
     from app.redis import session_get
-    sid = request.cookies.get("session")
-    session_data = await session_get(sid) if sid else None
-    operator = session_data.get("username", "unknown") if session_data else "unknown"
+
+    # JWT 优先获取 operator 身份
+    operator = auth_payload.get("sub", "unknown") if auth_payload else "unknown"
+    if operator == "unknown":
+        sid = request.cookies.get("session")
+        session_data = await session_get(sid) if sid else None
+        operator = session_data.get("username", "unknown") if session_data else "unknown"
 
     ok = await void_token(db, tid, operator, body.reason)
     if not ok:

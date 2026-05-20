@@ -31,6 +31,12 @@ SECRET_KEY_MASTER_KEY = os.getenv(
     "SECRET_KEY_MASTER_KEY", ""
 )
 
+# JWT 配置
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "paygo-jwt-secret-change-in-production")
+JWT_ALGORITHM = "HS256"
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE", "15"))
+JWT_REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE", "7"))
+
 # 限流配置
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
 LOGIN_RATE_LIMIT_PER_MINUTE = int(os.getenv("LOGIN_RATE_LIMIT_PER_MINUTE", "10"))

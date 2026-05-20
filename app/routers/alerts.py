@@ -65,11 +65,16 @@ async def api_detail(aid: str, request: Request, db: AsyncSession = Depends(get_
 
 @router.post("/{aid}/claim")
 async def api_claim(aid: str, request: Request, db: AsyncSession = Depends(get_db)):
-    await _check_auth(request)
+    auth_payload = await _check_auth(request)
     from app.redis import session_get
-    sid = request.cookies.get("session")
-    session_data = await session_get(sid) if sid else None
-    operator = session_data.get("username", "unknown") if session_data else "unknown"
+
+    # JWT 优先获取 operator 身份
+    operator = auth_payload.get("sub", "unknown") if auth_payload else "unknown"
+    if operator == "unknown":
+        sid = request.cookies.get("session")
+        session_data = await session_get(sid) if sid else None
+        operator = session_data.get("username", "unknown") if session_data else "unknown"
+
     ok = await claim_alert(db, aid, operator)
     if not ok: raise HTTPException(400, "认领失败（告警状态非pending）")
     return {"ok": True}

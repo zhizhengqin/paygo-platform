@@ -121,7 +121,16 @@ async def lifespan(app: FastAPI):
     await close_redis()
 
 
-app = FastAPI(title="Cambodia Solar PAYGO Platform", lifespan=lifespan)
+# API 版本化说明：
+# - 所有 /api/ 端点已可用，同时作为 /api/v1/ 的兼容别名
+# - 生产环境建议逐步迁移到 /api/v1/ 前缀，/api/ 保留兼容过渡期
+# - /api/v1/health 健康检查端点可用于云部署探活
+
+app = FastAPI(
+    title="Cambodia Solar PAYGO Platform",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 from app.middleware import RateLimiterMiddleware, RequestLoggingMiddleware
 
@@ -142,9 +151,32 @@ app.include_router(reports_router)
 app.include_router(settings_router)
 
 
+@app.get("/api/v1/health")
+async def api_v1_health():
+    """API v1 健康检查（云部署探活端点）"""
+    return {"status": "ok", "version": "1.0.0"}
+
+
 @app.get("/dashboard")
 async def dashboard(request: Request):
     from app.redis import session_get
+    from app.security import decode_token
+
+    # JWT Bearer token
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        payload = decode_token(auth_header[7:])
+        if payload and payload.get("type") == "access":
+            return templates.TemplateResponse(request, "dashboard.html")
+
+    # JWT cookie
+    jwt_cookie = request.cookies.get("access_token")
+    if jwt_cookie:
+        payload = decode_token(jwt_cookie)
+        if payload and payload.get("type") == "access":
+            return templates.TemplateResponse(request, "dashboard.html")
+
+    # Session cookie (legacy)
     sid = request.cookies.get("session")
     if not sid or await session_get(sid) is None:
         return RedirectResponse(url="/login", status_code=303)

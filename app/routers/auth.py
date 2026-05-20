@@ -5,10 +5,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.redis import session_create, session_get, session_delete
-from app.security import verify_password
+from app.security import verify_password, create_access_token, create_refresh_token
 from app.settings import (
     ADMIN_USERNAME, ADMIN_PASSWORD_HASH,
     LOGIN_MAX_FAILURES, LOGIN_LOCKOUT_MINUTES,
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES, JWT_REFRESH_TOKEN_EXPIRE_DAYS,
 )
 
 router = APIRouter()
@@ -100,8 +101,22 @@ async def login_post(request: Request, username: str = Form(...), password: str 
     await _clear_login_failures(r, ip)
     sid = str(uuid.uuid4())
     await session_create(sid, {"role": "admin", "username": username})
+
+    # JWT token 生成（云部署认证）
+    token_data = {"sub": username, "role": "admin"}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
     response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(key="session", value=sid, httponly=True)
+    response.set_cookie(
+        key="access_token", value=access_token, httponly=True,
+        max_age=JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    response.set_cookie(
+        key="refresh_token", value=refresh_token, httponly=True,
+        max_age=JWT_REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+    )
     return response
 
 
@@ -112,4 +127,6 @@ async def logout(request: Request):
         await session_delete(sid)
     response = RedirectResponse(url="/login", status_code=303)
     response.delete_cookie(key="session")
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
     return response

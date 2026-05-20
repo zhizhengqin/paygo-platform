@@ -117,6 +117,16 @@
 - 新增模型：User, SmsTemplate（16 张表总计）
 - 新增：app/routers/settings.py
 
+### Phase 9：JWT 认证 + API 版本化（云部署准备）✅ 已完成 2026-05-20
+- **JWT 认证**：双模式认证（JWT Bearer Token + JWT Cookie + Session Cookie 兼容）
+- **Token 生成**：`create_access_token`（15分钟）/ `create_refresh_token`（7天）
+- **认证增强**：`_check_auth` 支持 Bearer token / access_token cookie / session cookie 三通道
+- **登出**：同时清除 session + access_token + refresh_token cookie
+- **API 版本化**：`/api/v1/health` 健康检查端点，用于云部署探活
+- **生产迁移**：建议逐步迁移到 `/api/v1/` 前缀，`/api/` 保留兼容过渡期
+- **新增依赖**：python-jose[cryptography]>=3.3.0
+- 200 tests
+
 ### 全部 8 个 Tab 导航结构
 ```
 运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置

@@ -63,3 +63,34 @@ def decrypt_secret(ciphertext: str):
         return f.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
     except (InvalidToken, Exception):
         return None
+
+
+# ---- JWT Token 工具 ----
+
+from datetime import datetime, timedelta, timezone
+from jose import jwt, JWTError
+from app.settings import JWT_SECRET_KEY, JWT_ALGORITHM, JWT_ACCESS_TOKEN_EXPIRE_MINUTES, JWT_REFRESH_TOKEN_EXPIRE_DAYS
+
+
+def create_access_token(data: dict) -> str:
+    """生成 JWT access token，默认 15 分钟过期。"""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def create_refresh_token(data: dict) -> str:
+    """生成 JWT refresh token，默认 7 天过期。"""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def decode_token(token: str) -> dict | None:
+    """解码 JWT token，失败返回 None。"""
+    try:
+        return jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+    except JWTError:
+        return None
