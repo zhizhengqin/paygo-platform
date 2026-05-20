@@ -1608,14 +1608,14 @@ async function deleteUser(uid) {
 
 <div class="floating-ctrl" id="floatingCtrl">
   <div class="ctrl-header" id="ctrlHeader">
-    <span>☀ PAYGO 设备控制器</span>
+    <span>☀ 设备控制器</span>
     <button onclick="closeController()" title="关闭">×</button>
   </div>
   <div class="ctrl-body" id="ctrlBody">
     <div style="text-align:center;color:#64748b;padding:20px;">加载设备中…</div>
   </div>
 </div>
-<button class="ctrl-fab" id="ctrlFab" onclick="openController()" title="设备模拟器">☀</button>
+<button class="ctrl-fab" id="ctrlFab" onclick="openController()" title="设备控制器">☀</button>
 
 <script>
 // ---- 浮动控制器 ----
@@ -1690,9 +1690,22 @@ async function onCtrlDeviceSelect() {
   ctrlDevice = view.customer;
   const c = ctrlDevice;
   const relay = (c.status === 'active' || c.status === 'permanent');
+  // 获取剩余天数（从合同或 Token 统计）
+  let remainingDays = 0;
+  if (view.contracts && view.contracts.length > 0) {
+    const activeCt = view.contracts.find(function(ct) { return ct.status === 'active' || ct.status === 'overdue'; });
+    if (activeCt && activeCt.remaining_days) { remainingDays = activeCt.remaining_days; }
+  }
+  // 如果没有合同，根据 Token 天数估算
+  if (remainingDays === 0 && view.tokens && view.tokens.length > 0) {
+    remainingDays = view.tokens.filter(function(t) { return t.status !== 'SUPERSEDED'; })
+      .reduce(function(sum, t) { return sum + (t.days > 0 ? t.days : 0); }, 0);
+  }
+  const daysDisplay = c.status === 'permanent' ? '∞（永久解锁）' : (remainingDays > 0 ? remainingDays + ' 天' : '0 天');
   document.getElementById('ctrlDeviceInfo').innerHTML = `
     <div>设备: <b>${escapeHtml(c.device_id)}</b> · 客户: <b>${escapeHtml(c.name)}</b></div>
-    <div>密钥: ${(c.secret_key||'').substring(0,8)}… · Count: ${c.count}</div>
+    <div>密钥: ${(c.secret_key||'').substring(0,8)}… · Count: <b>${c.count}</b></div>
+    <div>剩余天数: <b style="color:${remainingDays > 0 ? '#10b981' : '#ef4444'};">${daysDisplay}</b></div>
     <div>状态: ${c.status==='active'?'🟢已激活':c.status==='locked'?'🔴已锁定':'⭐永久解锁'}</div>
     <div>继电器: <span style="color:${relay?'#10b981':'#6b7280'};">${relay?'● 供电中':'○ 断开'}</span></div>
     <input type="text" id="ctrlTokenInput" placeholder="9位Token" maxlength="9" inputmode="numeric" pattern="[0-9]*" autocomplete="off" onkeydown="if(event.key==='Enter')ctrlSubmitToken()">
