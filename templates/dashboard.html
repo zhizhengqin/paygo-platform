@@ -177,6 +177,12 @@ function switchTab(tab) {
     selectedContractId = null;
     selectedTokenId = null;
     loadTokens();
+  } else if (tab === 'alerts') {
+    layout.classList.remove('sidebar-hidden');
+    selectedCustomerId = null;
+    selectedContractId = null;
+    selectedTokenId = null;
+    loadAlerts();
   }
 }
 
@@ -1012,6 +1018,125 @@ async function doReissueToken(tid) {
   showToast('新 Token 已生成: ' + data.token);
   selectedTokenId = null;
   loadTokens();
+}
+
+// ---- 告警中心 ----
+let selectedAlertId = null;
+
+async function loadAlerts() {
+  var statsResp = await fetch('/api/alerts/stats');
+  var stats = await statsResp.json();
+  var alertsResp = await fetch('/api/alerts');
+  var alerts = await alertsResp.json();
+
+  var container = document.getElementById('customerItems');
+  document.querySelector('.sidebar-header h3').textContent = '告警列表';
+  document.querySelector('.sidebar-header h3').onclick = null;
+  document.getElementById('customerCount').textContent = alerts.length;
+
+  var keygenSection = document.querySelector('.keygen-section');
+  if (keygenSection) {
+    keygenSection.innerHTML = `
+      <div class="keygen-title">告警统计</div>
+      <div style="padding:8px 12px;font-size:12px;color:#475569;line-height:1.6;">
+        <div>总数: <strong style="color:#dc2626;">${stats.total}</strong> · 今日: <strong>${stats.today}</strong></div>
+        <div>待处理: <strong style="color:#f59e0b;">${stats.pending}</strong> · 已关闭: <strong>${stats.closed}</strong></div>
+      </div>
+      <button class="keygen-btn" style="margin-top:6px;" onclick="loadAlerts()">刷新</button>
+    `;
+  }
+
+  var LEVEL_COLOR = {'P0':'#dc2626','P1':'#f59e0b','P2':'#3b82f6'};
+  var STATUS_ICON = {'pending':'⚪','claimed':'🟡','processing':'🔵','closed':'🟢'};
+
+  container.innerHTML = alerts.map(function(a) {
+    return '<div class="customer-item ' + (a.id === selectedAlertId ? 'active' : '') + '" onclick="selectAlert(\'' + a.id + '\')">' +
+      '<div class="name">' + (STATUS_ICON[a.status]||'⚪') + ' ' +
+      '<span style="color:' + (LEVEL_COLOR[a.level]||'#64748b') + ';font-weight:600;">[' + a.level + ']</span> ' +
+      escapeHtml(a.title) + '</div>' +
+      '<div class="meta">' + (a.triggered_at||'') + ' · ' + (a.status||'?') + '</div></div>';
+  }).join('');
+
+  if (!selectedAlertId) {
+    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div class="icon">🚨</div><p>选择左侧告警查看详情</p></div>';
+  }
+}
+
+async function selectAlert(aid) {
+  selectedAlertId = aid;
+  document.querySelectorAll('.nav-tab').forEach(function(el) { el.classList.toggle('active', el.dataset.tab === 'alerts'); });
+  document.querySelector('.main-layout').classList.remove('sidebar-hidden');
+  await loadAlerts();
+
+  var resp = await fetch('/api/alerts/' + encodeURIComponent(aid));
+  var a = await resp.json();
+
+  var LEVEL_COLOR = {'P0':'#dc2626','P1':'#f59e0b','P2':'#3b82f6'};
+  var STATUS_LABEL = {'pending':'待处理','claimed':'已认领','processing':'处理中','closed':'已关闭'};
+
+  var logsHtml = (a.logs || []).map(function(l) {
+    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f1f5f9;">' +
+      '<span style="color:#64748b;">' + (l.created_at||'') + '</span> ' +
+      '<strong>' + l.action + '</strong>' +
+      (l.operator ? ' by ' + l.operator : '') +
+      (l.note ? ' — ' + l.note : '') + '</div>';
+  }).join('');
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="detail-card">
+      <div class="detail-header">
+        <div class="detail-avatar" style="background:${LEVEL_COLOR[a.level]||'#64748b'};">${a.level}</div>
+        <div>
+          <h2>${escapeHtml(a.title)}</h2>
+          <span class="status-badge" style="background:${LEVEL_COLOR[a.level]||'#64748b'};color:#fff;">${a.level} · ${STATUS_LABEL[a.status]||a.status}</span>
+        </div>
+      </div>
+      <div class="detail-body">
+        ${a.detail ? '<div class="detail-row"><span class="label">详情</span><span class="value">' + escapeHtml(a.detail) + '</span></div>' : ''}
+        <div class="detail-row"><span class="label">规则编码</span><span class="value">${a.rule_code||'—'}</span></div>
+        <div class="detail-row"><span class="label">触发时间</span><span class="value">${a.triggered_at||'—'}</span></div>
+        ${a.claimed_by ? '<div class="detail-row"><span class="label">认领人</span><span class="value">' + escapeHtml(a.claimed_by) + ' at ' + (a.claimed_at||'—') + '</span></div>' : ''}
+        ${a.resolution_note ? '<div class="detail-row"><span class="label">解决备注</span><span class="value">' + escapeHtml(a.resolution_note) + '</span></div>' : ''}
+        ${a.contract_id ? '<div class="detail-row"><span class="label">关联合同</span><span class="value">' + a.contract_id + '</span></div>' : ''}
+        ${a.customer_id ? '<div class="detail-row"><span class="label">关联客户</span><span class="value">' + a.customer_id + '</span></div>' : ''}
+      </div>
+      <div class="detail-section">
+        <h4>操作</h4>
+        <div class="btn-group">
+          ${a.status === 'pending' ? '<button class="btn btn-primary btn-sm" onclick="claimAlert(\'' + a.id + '\')">认领告警</button>' : ''}
+          ${(a.status === 'claimed' || a.status === 'processing') ? '<button class="btn btn-success btn-sm" onclick="resolveAlert(\'' + a.id + '\')">标记解决</button>' : ''}
+          ${a.status !== 'closed' ? '<button class="btn btn-warning btn-sm" onclick="escalateAlert(\'' + a.id + '\')">升级</button>' : ''}
+        </div>
+      </div>
+      <div class="detail-section">
+        <h4>操作日志</h4>
+        ${logsHtml || '<p style="color:#94a3b8;font-size:12px;">暂无日志</p>'}
+      </div>
+    </div>
+  `;
+}
+
+async function claimAlert(aid) {
+  var resp = await fetch('/api/alerts/' + encodeURIComponent(aid) + '/claim', {method:'POST'});
+  if (!resp.ok) { showToast('认领失败'); return; }
+  showToast('告警已认领'); selectAlert(aid);
+}
+
+async function resolveAlert(aid) {
+  var note = prompt('解决备注（可选）：');
+  var resp = await fetch('/api/alerts/' + encodeURIComponent(aid) + '/resolve', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({note: note||''})
+  });
+  if (!resp.ok) { showToast('操作失败'); return; }
+  showToast('告警已关闭'); selectAlert(aid);
+}
+
+async function escalateAlert(aid) {
+  if (!confirm('确定升级此告警吗？')) return;
+  var resp = await fetch('/api/alerts/' + encodeURIComponent(aid) + '/escalate', {method:'POST'});
+  if (!resp.ok) { showToast('升级失败'); return; }
+  showToast('告警已升级'); selectAlert(aid);
 }
 </script>
 {% endblock %}
