@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(lambda c: c.execute(text(
             "ALTER TABLE customers ALTER COLUMN secret_key DROP NOT NULL"
         )))
+        await conn.run_sync(lambda c: c.execute(text(
+            "ALTER TABLE tokens ADD COLUMN IF NOT EXISTS contract_id VARCHAR(8)"
+        )))
     await init_redis()
     init_fernet()
     # 种子支付汇率

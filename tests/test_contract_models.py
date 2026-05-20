@@ -242,3 +242,45 @@ class TestRepaymentScheduleModel:
 
         result = await session.get(RepaymentSchedule, "RS0002")
         assert result.status == "pending"
+
+
+from datetime import date as _date
+from decimal import Decimal as _Decimal
+from app.models import RepaymentRecord, Token
+
+class TestRepaymentRecord:
+    async def test_create_repayment_record(self, session):
+        """创建还款记录，关联 schedule 和 token"""
+        from app.models import _new_id, Customer, LoanProduct, Contract, RepaymentSchedule
+        from app.security import init_fernet, encrypt_secret
+        init_fernet()
+
+        c = Customer(id=_new_id("C"), name="T", phone="1", device_id="D1",
+                     secret_key_encrypted=encrypt_secret("a"*32))
+        lp = LoanProduct(id=_new_id("LP"), name="LP", capacity_kw=6, term_months=12,
+                        interest_rate=10, down_payment_pct=20, total_amount=690)
+        ct = Contract(id=_new_id("CT"), contract_no="KH-2026-00001", customer_id=c.id,
+                     product_id=lp.id, down_payment=138, loan_amount=552,
+                     monthly_payment=46, start_date=_date(2026,1,1), end_date=_date(2027,1,1))
+        rs = RepaymentSchedule(id=_new_id("RS"), contract_id=ct.id, period_no=1,
+                              due_date=_date(2026,2,1), principal=_Decimal("34.11"), interest=_Decimal("9.20"),
+                              total=_Decimal("43.31"), balance=_Decimal("517.89"))
+        t = Token(id=_new_id("T"), customer_id=c.id, token="123456789", days=30, count=1)
+        session.add_all([c, lp, ct, rs, t])
+        await session.commit()
+
+        rr = RepaymentRecord(
+            id=_new_id("RR"),
+            contract_id=ct.id,
+            schedule_id=rs.id,
+            token_id=t.id,
+            amount=_Decimal("43.31"),
+            payment_method="Bakong",
+        )
+        session.add(rr)
+        await session.commit()
+
+        assert rr.id.startswith("RR")
+        assert rr.amount == _Decimal("43.31")
+        assert rr.payment_method == "Bakong"
+        assert rr.paid_at is not None

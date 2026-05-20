@@ -46,6 +46,7 @@ class Token(Base):
     token = Column(String(9), nullable=False)
     days = Column(Integer, nullable=False)
     amount = Column(Numeric(10, 2), default=0)
+    contract_id = Column(String(8), ForeignKey("contracts.id"), nullable=True, index=True)
     count = Column(Integer, nullable=False)
     generated_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
     expires_at = Column(DateTime(timezone=True), nullable=False,
@@ -144,3 +145,16 @@ class RepaymentSchedule(Base):
     status = Column(String(20), default="pending")
 
     contract = relationship("Contract", back_populates="schedules")
+
+
+class RepaymentRecord(Base):
+    """实际还款记录 — 关联还款计划与 Token"""
+    __tablename__ = "repayment_records"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("RR"))
+    contract_id = Column(String(8), ForeignKey("contracts.id"), nullable=False, index=True)
+    schedule_id = Column(String(8), ForeignKey("repayment_schedules.id"), nullable=False)
+    token_id = Column(String(8), ForeignKey("tokens.id"), nullable=True)
+    amount = Column(Numeric(10, 2), nullable=False)
+    payment_method = Column(String(20), default="Bakong")
+    paid_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
