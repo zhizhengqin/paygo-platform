@@ -2,6 +2,8 @@
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 <div class="main-layout">
   <!-- 左侧面板 -->
   <aside class="sidebar">
@@ -184,6 +186,12 @@ function switchTab(tab) {
     selectedContractId = null;
     selectedTokenId = null;
     loadAlerts();
+  } else if (tab === 'devicemap') {
+    layout.classList.add('sidebar-hidden');
+    document.querySelector('.sidebar-header h3').textContent = '';
+    document.getElementById('customerCount').textContent = '';
+    document.getElementById('customerItems').innerHTML = '';
+    initDeviceMap();
   }
 }
 
@@ -1212,6 +1220,96 @@ async function escalateAlert(aid) {
   var resp = await fetch('/api/alerts/' + encodeURIComponent(aid) + '/escalate', {method:'POST'});
   if (!resp.ok) { showToast('升级失败'); return; }
   showToast('告警已升级'); selectAlert(aid);
+}
+
+// ---- 设备地图 ----
+var deviceMap = null;
+var deviceMarkers = [];
+
+async function initDeviceMap() {
+  var resp = await fetch('/api/devices/geo');
+  var devices = await resp.json();
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div id="deviceMapContainer" style="position:relative;">
+      <div style="padding:12px 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#fff;border-bottom:1px solid var(--border);">
+        <strong style="font-size:14px;">设备地图 (${devices.length} 台)</strong>
+        <input type="text" id="mapSearch" placeholder="搜索设备序列号或客户名..."
+          style="padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;width:200px;font-family:inherit;"
+          onkeyup="searchDeviceOnMap()">
+        <button class="btn btn-outline btn-sm" onclick="filterMapLayer('all')" id="mapBtnAll" style="background:#059669;color:#fff;">全部</button>
+        <button class="btn btn-outline btn-sm" onclick="filterMapLayer('active')" id="mapBtnActive">活跃</button>
+        <button class="btn btn-outline btn-sm" onclick="filterMapLayer('locked')" id="mapBtnLocked">逾期锁定</button>
+        <button class="btn btn-outline btn-sm" onclick="filterMapLayer('permanent')" id="mapBtnPermanent">永久解锁</button>
+      </div>
+      <div id="leafletMap" style="height:calc(100vh - 150px);width:100%;"></div>
+    </div>
+  `;
+
+  // Store devices globally for filtering
+  window._mapDevices = devices;
+
+  // Initialize Leaflet map centered on Cambodia
+  setTimeout(function() {
+    if (deviceMap) { deviceMap.remove(); deviceMarkers = []; }
+    deviceMap = L.map('leafletMap').setView([12.5657, 104.9910], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap', maxZoom: 18
+    }).addTo(deviceMap);
+    renderDeviceMarkers(devices);
+  }, 200);
+}
+
+function renderDeviceMarkers(devices) {
+  // Clear old markers
+  deviceMarkers.forEach(function(m) { deviceMap.removeLayer(m); });
+  deviceMarkers = [];
+
+  var colorMap = { active: '#059669', locked: '#dc2626', permanent: '#f59e0b' };
+  var bounds = [];
+
+  devices.forEach(function(d) {
+    if (!d.gps_latitude || !d.gps_longitude) return;
+    var latlng = [d.gps_latitude, d.gps_longitude];
+    bounds.push(latlng);
+    var marker = L.circleMarker(latlng, {
+      radius: 8, fillColor: colorMap[d.status] || '#94a3b8', color: '#fff',
+      weight: 2, fillOpacity: 0.85
+    }).addTo(deviceMap);
+    marker.bindPopup(
+      '<strong>' + escapeHtml(d.name) + '</strong><br>' +
+      '设备: ' + escapeHtml(d.device_id) + '<br>' +
+      '状态: ' + (d.status === 'active' ? '活跃' : d.status === 'locked' ? '逾期锁定' : '永久解锁')
+    );
+    marker._deviceData = d;
+    deviceMarkers.push(marker);
+  });
+
+  if (bounds.length > 0) {
+    deviceMap.fitBounds(bounds, { padding: [30, 30] });
+  }
+}
+
+function filterMapLayer(status) {
+  document.querySelectorAll('[id^="mapBtn"]').forEach(function(b) { b.style.background=''; b.style.color=''; });
+  document.getElementById('mapBtn' + (status === 'all' ? 'All' : status.charAt(0).toUpperCase()+status.slice(1))).style.background = '#059669';
+  document.getElementById('mapBtn' + (status === 'all' ? 'All' : status.charAt(0).toUpperCase()+status.slice(1))).style.color = '#fff';
+
+  var devices = status === 'all' ? window._mapDevices : window._mapDevices.filter(function(d) { return d.status === status; });
+  renderDeviceMarkers(devices);
+}
+
+function searchDeviceOnMap() {
+  var q = document.getElementById('mapSearch').value.trim().toLowerCase();
+  if (!q) { renderDeviceMarkers(window._mapDevices); return; }
+  var filtered = window._mapDevices.filter(function(d) {
+    return (d.device_id && d.device_id.toLowerCase().indexOf(q) >= 0) ||
+           (d.name && d.name.toLowerCase().indexOf(q) >= 0);
+  });
+  renderDeviceMarkers(filtered);
+  if (filtered.length === 1 && filtered[0].gps_latitude) {
+    deviceMap.setView([filtered[0].gps_latitude, filtered[0].gps_longitude], 14);
+  }
 }
 </script>
 {% endblock %}

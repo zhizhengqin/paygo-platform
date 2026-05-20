@@ -75,6 +75,17 @@ class SimulatePayment(BaseModel):
     amount: float
 
 
+@router.get("/devices/geo")
+async def get_devices_geo(request: Request, db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    customers = await get_customers(db)
+    return [{
+        "id": c["id"], "name": c["name"], "device_id": c["device_id"],
+        "status": c["status"],
+        "gps_latitude": c.get("gps_latitude"), "gps_longitude": c.get("gps_longitude"),
+    } for c in customers if c.get("gps_latitude") and c.get("gps_longitude")]
+
+
 @router.get("/customers")
 async def list_customers(request: Request,
                          search: str = None,
