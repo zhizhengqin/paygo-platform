@@ -63,7 +63,36 @@ _Decoder._count_is_valid = _patched_count_is_valid
 _Decoder.update_used_counts = _patched_update_used_counts
 
 
+@pytest.fixture(scope="session", autouse=True)
+async def _run_app_lifespan():
+    """Explicitly enter the app lifespan for the test session.
+    ASGITransport in httpx 0.28 does NOT send lifespan events to the ASGI app,
+    so DB tables, seed data, and Redis are never initialized unless we trigger
+    the lifespan manually."""
+    from app.main import lifespan, app
+    async with lifespan(app):
+        yield
+
+
 @pytest.fixture(autouse=True)
 def clear_db():
     """No-op: test isolation is handled by per-test DB session rollback."""
     pass
+
+
+@pytest.fixture(scope="module", autouse=True)
+async def _clean_redis_auth_state():
+    """Clean Redis auth/lockout/ratelimit keys after each test module to prevent
+    cross-module pollution.  Without this, test_auth.py's lockout tests leave
+    login_locked:* keys with a 15-minute TTL, blocking all subsequent modules.
+    """
+    yield
+    from app.redis import get_redis
+    r = get_redis()
+    if r:
+        keys = []
+        for pattern in ("login_failed:*", "login_locked:*", "ratelimit:*"):
+            found = await r.keys(pattern)
+            keys.extend(found)
+        if keys:
+            await r.delete(*keys)
