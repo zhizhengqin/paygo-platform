@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Customer, Mfi, Token, PaymentRate, SmsRecord, LoanProduct, Contract,
-    RepaymentSchedule, RepaymentRecord, _new_id,
+    RepaymentSchedule, RepaymentRecord, Alert, AlertRule, AlertLog, _new_id,
 )
 from app.security import encrypt_secret, decrypt_secret
 
@@ -997,3 +997,133 @@ async def get_mfis(db: AsyncSession, status: str = None) -> list[dict]:
     return [{"id": m.id, "name": m.name, "branch": m.branch or "",
              "contact_info": m.contact_info, "api_endpoint": m.api_endpoint,
              "status": m.status} for m in result.scalars().all()]
+
+
+# ============================================================
+# 告警中心 — CRUD + 规则引擎 + 统计
+# ============================================================
+
+async def seed_alert_rules(db: AsyncSession):
+    """种子告警规则（幂等）"""
+    existing = await db.execute(select(func.count()).select_from(AlertRule))
+    if existing.scalar() > 0:
+        return
+    db.add_all([
+        AlertRule(id=_new_id("AR"), code="ALM-001", name="逾期未还款", level="P0", sla_hours=24,
+                  description="合同还款到期超过3天未付"),
+        AlertRule(id=_new_id("AR"), code="ALM-002", name="设备通信失联", level="P1", sla_hours=48,
+                  description="设备超过72小时无心跳"),
+        AlertRule(id=_new_id("AR"), code="ALM-003", name="Token验证异常", level="P2", sla_hours=72,
+                  description="同一设备连续3次Token验证失败"),
+    ])
+    await db.commit()
+
+
+async def get_alert_rules(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(AlertRule).order_by(AlertRule.code))
+    return [{"id": r.id, "code": r.code, "name": r.name, "level": r.level,
+             "sla_hours": r.sla_hours, "enabled": r.enabled} for r in result.scalars().all()]
+
+
+async def create_alert(db: AsyncSession, rule_code: str, title: str,
+                       contract_id: str = None, customer_id: str = None,
+                       detail: str = None, level: str = "P0") -> str:
+    aid = _new_id("AL")
+    a = Alert(id=aid, rule_code=rule_code, title=title, detail=detail,
+              contract_id=contract_id, customer_id=customer_id, level=level,
+              status="pending", triggered_at=datetime.now())
+    db.add(a)
+    log = AlertLog(id=_new_id("LG"), alert_id=aid, action="triggered",
+                   note=f"规则 {rule_code} 触发告警")
+    db.add(log)
+    await db.commit()
+    return aid
+
+
+async def get_alerts(db: AsyncSession, status: str = None, level: str = None) -> list[dict]:
+    level_order = {"P0": 0, "P1": 1, "P2": 2}
+    q = select(Alert)
+    if status:
+        q = q.where(Alert.status == status)
+    if level:
+        q = q.where(Alert.level == level)
+    q = q.order_by(Alert.triggered_at.desc()).limit(100)
+    result = await db.execute(q)
+    alerts = result.scalars().all()
+    alerts_sorted = sorted(alerts, key=lambda a: (level_order.get(a.level or "P2", 9),
+                                                   -(a.triggered_at.timestamp() if a.triggered_at else 0)))
+    return [_alert_to_dict(a) for a in alerts_sorted]
+
+
+async def get_alert_detail(db: AsyncSession, aid: str) -> dict | None:
+    a = await db.get(Alert, aid)
+    if not a:
+        return None
+    d = _alert_to_dict(a)
+    logs_result = await db.execute(
+        select(AlertLog).where(AlertLog.alert_id == aid).order_by(AlertLog.created_at)
+    )
+    d["logs"] = [{"action": l.action, "operator": l.operator, "note": l.note,
+                  "created_at": l.created_at.strftime("%Y-%m-%d %H:%M:%S") if l.created_at else None}
+                 for l in logs_result.scalars().all()]
+    return d
+
+
+async def claim_alert(db: AsyncSession, aid: str, operator: str) -> bool:
+    a = await db.get(Alert, aid)
+    if not a or a.status != "pending":
+        return False
+    a.status = "claimed"
+    a.claimed_by = operator
+    a.claimed_at = datetime.now()
+    db.add(AlertLog(id=_new_id("LG"), alert_id=aid, action="claimed", operator=operator))
+    await db.commit()
+    return True
+
+
+async def resolve_alert(db: AsyncSession, aid: str, note: str = "") -> bool:
+    a = await db.get(Alert, aid)
+    if not a or a.status not in ("claimed", "processing"):
+        return False
+    a.status = "closed"
+    a.resolved_at = datetime.now()
+    a.resolution_note = note
+    db.add(AlertLog(id=_new_id("LG"), alert_id=aid, action="resolved", note=note))
+    await db.commit()
+    return True
+
+
+async def escalate_alert(db: AsyncSession, aid: str) -> bool:
+    a = await db.get(Alert, aid)
+    if not a:
+        return False
+    new_level = "P1" if a.level == "P2" else "P0"
+    a.level = new_level
+    db.add(AlertLog(id=_new_id("LG"), alert_id=aid, action="escalated", note=f"升级至 {new_level}"))
+    await db.commit()
+    return True
+
+
+async def get_alert_stats(db: AsyncSession) -> dict:
+    from datetime import date
+    today = date.today()
+    total_r = await db.execute(select(func.count()).select_from(Alert))
+    today_r = await db.execute(select(func.count()).select_from(Alert).where(
+        func.date(Alert.triggered_at) == today))
+    pending_r = await db.execute(select(func.count()).select_from(Alert).where(
+        Alert.status == "pending"))
+    closed_r = await db.execute(select(func.count()).select_from(Alert).where(
+        Alert.status == "closed"))
+    return {"total": total_r.scalar() or 0, "today": today_r.scalar() or 0,
+            "pending": pending_r.scalar() or 0, "closed": closed_r.scalar() or 0}
+
+
+def _alert_to_dict(a: Alert) -> dict:
+    return {"id": a.id, "rule_code": a.rule_code, "title": a.title, "detail": a.detail,
+            "level": a.level, "status": a.status,
+            "contract_id": a.contract_id, "customer_id": a.customer_id,
+            "claimed_by": a.claimed_by,
+            "claimed_at": a.claimed_at.strftime("%Y-%m-%d %H:%M:%S") if a.claimed_at else None,
+            "resolved_at": a.resolved_at.strftime("%Y-%m-%d %H:%M:%S") if a.resolved_at else None,
+            "resolution_note": a.resolution_note,
+            "triggered_at": a.triggered_at.strftime("%Y-%m-%d %H:%M:%S") if a.triggered_at else None}
