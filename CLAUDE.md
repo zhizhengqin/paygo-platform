@@ -54,10 +54,12 @@
 - 按期还款→Token 生成、逾期自动检测→设备锁定、提前结清→永久解锁、还款进度条
 - 新增：repayment_records 表，165 tests
 
-### Phase 2：Token 管理独立模块（当前阶段）
-- **导航 tab**：新增「Token 管理」
-- **核心能力**：Token 列表/批量生成/手动补发/作废，独立于客户详情
-- 详见升级计划 Phase 2
+### Phase 2：Token 管理独立模块 ✅ 已完成 2026-05-20
+- **导航 tab**：新增「Token 管理」（第 4 个 tab）
+- **核心能力**：Token 列表（按客户/状态筛选+分页）、Token 统计卡片（总数/今日/本月/已作废）、Token 详情（含客户名/关联合同/审计字段）、手动补发（Counter+1 新 Token，原 Token → SUPERSEDED）、Token 作废（标记 SUPERSEDED + 操作人 + 原因）
+- **新增文件**：`app/routers/tokens.py`, `tests/test_tokens_api.py`
+- **Token 模型**：新增 status/superseded_by/voided_at/voided_by/void_reason/ip_address/user_agent（7 字段）
+- 178 tests
 
 ### Phase 3：客户 360 视图与 MFI 管理（原 M6）
 - **导航 tab**：扩展「客户管理」（MFI 选择器 + 360 聚合视图）
@@ -82,7 +84,7 @@
 - Token 生成：OpenPAYGO 标准 >=0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
 - 安全：bcrypt（密码哈希）+ Fernet（设备密钥对称加密）+ Redis 滑动窗口限流
 - ORM：SQLAlchemy 2.0 async，**10 张表**（customers, tokens, sms_records, payment_rates, device_states, loan_products, contracts, repayment_schedules, repayment_records）
-- 测试：pytest-asyncio，**165 个测试**，真实测试数据库隔离
+- 测试：pytest-asyncio，**178 个测试**，真实测试数据库隔离
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现

@@ -204,7 +204,7 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 
 ---
 
-## Phase 2：Token 管理独立模块
+## Phase 2：Token 管理独立模块 ✅ 已完成 2026-05-20
 
 **目标**：Token 从"客户详情附带功能"升级为独立管理模块
 
@@ -237,6 +237,18 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 
 - 新增：Token 列表筛选、批量生成、补发逻辑、作废逻辑，预计 +12 tests
 - 累计测试数：~166
+
+### 实际完成
+
+| 项目 | 计划 | 实际 |
+|:---|:---|:---|
+| 新增测试 | +12 | +13 (test_store.py: +7, test_tokens_api.py: +6) |
+| 累计测试 | ~166 | 178 |
+| Token 模型字段 | status/superseded/void/audit (7 字段) | 一致 |
+| 新增 store 函数 | get_tokens_filtered/get_token_stats/get_token_detail/reissue_token/void_token | 一致（未实现批量生成 batch_generate_tokens，UI 阶段暂不需要） |
+| 新增 API | GET stats/GET list/GET detail/POST reissue/POST void | 一致 |
+| 新增导航 Tab | Token 管理 ✅ | 一致 |
+| 关键差异 | — | 从 customers.py 移除了旧的 `/api/tokens` 端点避免路由冲突；`_token_to_dict` 扩展了 5 个新字段 |
 
 ---
 
@@ -495,7 +507,7 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 |:---|:---|:---|:---|:---|:---|:---|:---|
 | Phase 0 | 安全基础 | — | +10→+17 | 157 | bcrypt+限流+日志 | 安全架构底线 | ✅ |
 | Phase 1 | 合同管理补完 | — | +15→+8 | 165 | 还款跟踪闭环 | 还款记录表对齐架构 | ✅ |
-| Phase 2 | Token 管理 | Token 管理 | +12 | ~166 | Token 全生命周期 | 审计字段对齐架构 | ⏳ |
+| Phase 2 | Token 管理 | Token 管理 | +12→+13 | 178 | Token 全生命周期 | 审计字段对齐架构 | ✅ |
 | Phase 3 | 客户 360 | — | +10 | ~176 | 单客户聚合视图 | MFI表+缓存策略 | ⏳ |
 | Phase 4 | 告警中心 | 告警中心 | +18 | ~194 | 告警+工单工作流 | 结构化审计日志 | ⏳ |
 | Phase 5 | 仪表盘增强 | — | +6 | ~200 | 多维度数据驾驶舱 | 业务缓存增强 | ⏳ |
