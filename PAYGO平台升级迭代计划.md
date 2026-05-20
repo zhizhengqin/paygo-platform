@@ -2,8 +2,8 @@
 
 **编制日期**：2026-05-20
 **最后更新**：2026-05-20
-**当前版本**：Phase 0 + Phase 1 已完成（165 tests）
-**目标**：按业务闭环深度，分 9 个阶段逐步补全 FR-OPS-001 ~ FR-OPS-008 八大模块，同时补齐架构安全短板
+**当前版本**：全部 10 个 Phase 已完成 ✅（200 tests，16 张表，8 个导航 Tab）
+**目标**：按业务闭环深度，分 9 个阶段逐步补全 FR-OPS-001 ~ FR-OPS-008 八大模块，同时补齐架构安全短板 ✅ 已全部完成
 
 ---
 
@@ -14,7 +14,7 @@
 | 架构层 | 设计说明书（目标架构） | 当前原型实现 | 原型阶段建议 |
 |:---|:---|:---|:---|
 | **客户端层** | React 18 (Web) + Flutter (Mobile) + 响应式 Web (客户门户) | Jinja2 模板 + 原生 CSS/JS | 保持现有 Jinja2，原型阶段够用；React 迁移待真实部署前 |
-| **接入层** | AWS ALB + WAF + Kong API Gateway / JWT 验证 + 限流 + 路由 | 无网关，FastAPI 直连 | Phase 0 补 JWT 认证；限流用 Redis 滑动窗口；ALB/WAF/Kong 属云部署，原型跳过 |
+| **接入层** | AWS ALB + WAF + Kong API Gateway / JWT 验证 + 限流 + 路由 | 无网关，FastAPI 直连 | ✅ JWT 三模式认证完成；✅ Redis 限流完成；ALB/WAF/Kong 属云部署，原型跳过 |
 | **应用服务层** | 6 微服务 (Token/Device/Payment/MFI/Notification/OTA-Report) | 单体 FastAPI，routers 按域拆分 | 保持单体，按 router 做域隔离即可；微服务拆分是生产部署的事 |
 | **消息总线层** | Kafka (AWS MSK) | 无（同步函数调用） | 原型阶段不需要；用 FastAPI BackgroundTasks 替代异步任务 |
 | **数据层** | PostgreSQL 15 + Redis + EMQX + S3 + OpenSearch + Vault/KMS | PostgreSQL 15 + Redis 8 | ✅ PG + Redis 已就绪；EMQX/MQTT 需硬件配合跳过；S3/OpenSearch/Vault 属云服务跳过 |
@@ -31,7 +31,7 @@
 | 密码存储 | bcrypt 哈希 | **明文比较** (`settings.ADMIN_PASSWORD`) | 高危，需立即修复 |
 | Secret Key 存储 | AWS KMS + AES-256-GCM 加密 | **明文存储** (`customers.secret_key`) | 高危，原型可降级为 bcrypt 哈希 |
 | Token 存储 | bcrypt 哈希，原始 Token 仅 SMS 瞬间 | **明文存储** (`tokens.token`) | 中危，原型需展示 Token 可暂存明文 |
-| API 认证 | JWT (RS256) 15min + Refresh 7d | Session cookie (Redis) | 中危，Session 可用但 JWT 更适合 API |
+| API 认证 | JWT (RS256) 15min + Refresh 7d | ✅ JWT HS256 Bearer + Cookie + Session 三模式 | 已修复，Phase 9 完成 |
 | 传输加密 | TLS 1.3 全站 + mTLS 设备端 | HTTP 明文 | 低危（本地开发环境） |
 | 权限控制 | RBAC 5 角色 + 接口级注解 | 单一管理员，无角色区分 | 中危，Phase 8 补齐 |
 | 审计日志 | 全量操作日志，不可篡改 | **无** | 中危，Phase 4/8 逐步补齐 |
@@ -42,7 +42,7 @@
 | 架构维度 | 设计说明书 | 当前实现 | 差距评估 |
 |:---|:---|:---|:---|
 | 服务拆分 | 6 微服务，独立 DB | 单体应用，单 DB | 原型可接受，按 router 隔离域 |
-| API 版本化 | `/api/v1/` 前缀 | `/api/` 无版本号 | Phase 8 统一加 `/api/v1/` |
+| API 版本化 | `/api/v1/` 前缀 | ✅ `/api/v1/health` 已就绪，生产逐步迁移 | Phase 9 完成 |
 | 异步消息 | Kafka 事件驱动 | 同步调用 + BackgroundTasks | 原型可接受，BackgroundTasks 够用 |
 | 数据库分库 | 每个微服务独立 DB | 所有表共用一个 DB | 原型可接受，用 Schema 命名区分 |
 | 缓存策略 | 设备状态/Token序列/客户/汇率/会话 | 仅 Session 缓存 | Phase 5 补业务缓存 |
@@ -82,14 +82,15 @@
 ## 总体路线
 
 ```
-Phase 0 (新增)      Phase 1 (当前收尾)   Phase 2          Phase 3          Phase 4
+Phase 0 (新增)      Phase 1             Phase 2          Phase 3          Phase 4
 安全基础升级    →   合同管理补完     →   Token 管理独立  →  客户360视图   →  告警中心
-bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单客户聚合视图   逾期/故障自动预警
+bcrypt+Fernet+限流   还款跟踪闭环          Token全生命周期     单客户聚合视图   逾期/故障自动预警
     │                    │                    │                  │                │
     └────────────────────┴────────────────────┴──────────────────┴────────────────┘
                                           │
-                                Phase 5   ▼   Phase 6      Phase 7      Phase 8
-                               仪表盘增强  →  设备地图   →  报表中心  →  系统设置
+                                Phase 5   ▼   Phase 6      Phase 7      Phase 8      Phase 9
+                               仪表盘增强  →  设备地图   →  报表中心  →  系统设置  →  JWT+API版本化
+                                                                                   云部署就绪
 ```
 
 ## 各阶段模拟边界
@@ -569,8 +570,26 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 | 新增模型 | users + sms_templates | 一致 |
 | 新增 router | settings.py (health/payment-rates/sms-templates/users) | 一致 |
 | UI Tab | 第8个 tab「系统设置」 | 一致（含健康检查/MFI管理/支付汇率/用户管理） |
-| JWT 升级 | 计划 Phase 8 | 未实现（session cookie 原型够用，生产部署前升级） |
-| API 版本化 | 计划 Phase 8 | 未实现（`/api/` 前缀已统一，`/api/v1/` 生产部署前加） |
+| JWT 升级 | 计划 Phase 8 → 实际 Phase 9 完成 | 三通道认证（Bearer Token + JWT Cookie + Session Cookie） |
+| API 版本化 | 计划 Phase 8 → 实际 Phase 9 完成 | `/api/v1/health` 健康检查端点 + 生产迁移策略 |
+
+---
+
+## Phase 9：JWT 认证 + API 版本化 ✅ 已完成 2026-05-20
+
+**目标**：升级认证系统 + 云部署准备
+
+### 实际完成
+
+| 项目 | 说明 |
+|:---|:---|
+| JWT 认证 | 三模式认证（Bearer Token / JWT Cookie / Session Cookie），python-jose HS256 |
+| Token 生成 | create_access_token(15min) + create_refresh_token(7day) |
+| _check_auth 增强 | 优先级：Bearer header → access_token cookie → session cookie |
+| 登出 | 同时清除 session + access_token + refresh_token |
+| API 版本化 | `/api/v1/health` 健康检查端点 |
+| 依赖 | python-jose[cryptography]>=3.3.0 |
+| 测试数 | 200（无新增独立测试，集成到现有认证测试） |
 
 ---
 
@@ -587,12 +606,25 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 | Phase 6 | 设备地图 | 设备地图 | +4→+0 | 200 | GIS 可视化 | — | ✅ |
 | Phase 7 | 报表中心 | 报表中心 | +8→+0 | 200 | 自动报表+导出 | — | ✅ |
 | Phase 8 | 系统设置 | 系统设置 | +18→+0 | 200 | RBAC+健康检查 | 用户/模板/汇率管理 | ✅ |
+| Phase 9 | JWT+API版本化 | — | +0 | 200 | JWT三通道认证 | /api/v1/health 探活 | ✅ |
 
-### 最终导航结构
+### 最终导航结构（全部 8 个 Tab）
 
 ```
 运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置
 ```
+
+### 最终项目规模
+
+| 指标 | 数值 |
+|:---|:---|
+| 导航 Tab | 8 个 |
+| 数据表 | 16 张 |
+| API 端点 | 40+ 个 |
+| 测试数 | **200 passed, 0 failed** |
+| Python 源文件 | 18 个（app/ + routers/） |
+| 前端模板 | 3 个（Jinja2 SPA） |
+| 实施计划文档 | 10 个（Phase 0-9） |
 
 ### 最终架构对齐度
 
@@ -600,9 +632,9 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 
 | 架构维度 | 对齐度 | 说明 |
 |:---|:---|:---|
-| 安全架构 | ~70% | bcrypt + RBAC + JWT + 限流 + 审计日志已实现；KMS/Vault/mTLS 待生产 |
+| 安全架构 | ~80% | bcrypt + RBAC + JWT三模式 + 限流 + 审计日志已实现；KMS/Vault/mTLS 待生产 |
 | 数据模型 | ~80% | 核心实体全部对齐（含 MFI/告警/审计）；遥测/OTA 表待硬件到位 |
-| API 设计 | ~75% | RESTful + 版本化 + JWT 认证已实现；Kafka 事件驱动待生产 |
+| API 设计 | ~80% | RESTful + /api/v1/ + JWT三模式 + 40+端点；Kafka 事件驱动待生产 |
 | 缓存策略 | ~60% | Session + 客户 + 仪表盘缓存已实现；设备状态/Token序列缓存待生产 |
 | 部署架构 | ~20% | Docker Compose 本地部署；AWS EKS/K8s 全部待生产 |
 | 可观测性 | ~30% | 结构化日志 + 审计日志已实现；Prometheus/Grafana/OpenSearch 待生产 |
@@ -652,3 +684,5 @@ bcrypt+JWT+限流     还款跟踪闭环          Token全生命周期     单�
 - **一次只做一个 Phase**：每个 Phase 完成后运行全部测试、提交代码，再进入下一阶段
 - **模拟边界明确**：所有模拟功能在代码中加 `# SIMULATED:` 注释标记
 - **安全性不妥协**：密码/密钥哈希、限流、审计日志即使在原型阶段也必须实现
+- **每个 Phase 完成后必须同步更新三个文件**：`PAYGO平台升级迭代计划.md`（标注完成+实际结果）、`CLAUDE.md`（原型范围+测试数+表数+路线图+目录结构）、`README.md`（操作手册）
+- **演示流程**：详见 `PAYGO平台演示流程手册.md`（4 角色 × 23 步 × 10 截图）

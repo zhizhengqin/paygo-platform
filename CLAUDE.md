@@ -13,7 +13,7 @@
 
 ## 当前原型范围
 
-当前为**第二阶段原型（Phase 0 + Phase 1 已完成）**，累计 **165 个测试**，**10 张数据表**。
+当前为**第二阶段原型（全部 10 个 Phase 已完成）**，累计 **200 个测试**，**16 张数据表**，**8 个导航 Tab**。
 
 ### Phase 0：安全基础升级 ✅ 已完成 2026-05-20
 - 密码 bcrypt 哈希存储（替换明文比较）
@@ -33,16 +33,7 @@
 - 新增字段：`tokens.contract_id`
 - API：`POST /api/contracts/{cid}/pay`, `POST /api/contracts/check-overdue`, `POST /api/contracts/{cid}/settle`
 
-### 已有功能（早期原型）
-- PostgreSQL 15 + Redis 8 迁移
-- 运营仪表盘首页（KPI 卡片 + 设备状态饼图 + 最近交易列表）
-- 二层导航栏（运营仪表盘 / 客户管理 / 合同管理）
-- Docker Compose 生产部署（4 服务编排）
-- 客户 CRUD + 模拟支付 + Token 生成（OpenPAYGO SipHash-2-4）
-- 合同 CRUD + 审批 + 等额本息还款计划自动生成
-- 贷款产品 5 档配置（6kW~30kW）
-
-## 原型迭代路线图
+## 原型迭代路线图（全部完成）
 
 详细升级计划见根目录 `PAYGO平台升级迭代计划.md`。按业务闭环深度分 9 个阶段（Phase 0-8），每阶段完成后必须同步更新本文件和升级计划文件。
 
@@ -167,12 +158,16 @@
 - 测试：pytest-asyncio，**200 个测试**，真实测试数据库隔离
 
 ## Superpowers 框架配置
-- 强制使用TDD：所有功能必须先写测试再写实现
-- 计划先行：每个开发阶段前必须编写实施计划
-- 子代理开发：复杂任务使用子代理执行
+- 强制TDD：所有功能必须先写测试再写实现
+- 计划先行：每个 Phase 前编写实施计划到 `docs/superpowers/plans/`
+- 子代理开发：复杂任务使用 Subagent-Driven Development 执行
 - 双重审查：规格合规审查 + 代码质量审查
-- 验证前完成：所有功能必须通过测试验证
+- 验证前完成：所有功能必须通过测试验证（`pytest tests/ -v`）
 - 频繁提交：每个小步骤完成后提交代码
+- **每个 Phase 完成后必须同步更新**：
+  1. `PAYGO平台升级迭代计划.md` — 标注完成状态 ✅ + 实际结果
+  2. `CLAUDE.md` — 更新原型范围、测试数、表数、路线图、目录结构
+  3. `README.md` — 更新操作手册（新增Tab/API/功能说明）
 
 ## 项目目录结构
 ```
@@ -180,20 +175,24 @@ paygo-platform/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI 主应用入口（lifespan 管理连接池 + 中间件注册 + 数据迁移）
-│   ├── settings.py          # 数据库/Redis/安全/限流 配置（环境变量覆盖）
-│   ├── models.py            # SQLAlchemy ORM 模型（10 张表）
+│   ├── settings.py          # 数据库/Redis/安全/JWT/限流 配置（环境变量覆盖）
+│   ├── models.py            # SQLAlchemy ORM 模型（16 张表）
 │   ├── database.py          # async engine + session 工厂 + Depends 注入
 │   ├── redis.py             # Redis 客户端 + session/缓存/防重放
-│   ├── store.py             # async 数据访问层（CRUD + 还款标记 + 逾期检测 + 结清）
-│   ├── security.py          # bcrypt 密码哈希 + Fernet 密钥加解密（Phase 0 新增）
-│   ├── middleware.py         # 限流中间件 + 请求日志中间件（Phase 0 新增）
+│   ├── store.py             # async 数据访问层（CRUD + 还款/逾期/结清/告警/360/标签/批量Token）
+│   ├── security.py          # bcrypt 密码哈希 + Fernet 密钥加解密 + JWT
+│   ├── middleware.py         # 限流中间件 + 请求日志中间件
 │   └── routers/
 │       ├── __init__.py
-│       ├── auth.py          # 登录/登出（bcrypt 验证 + 登录锁定）
-│       ├── customers.py     # 客户CRUD + 模拟支付 + 锁定/永久解锁 API（async + 缓存）
-│       ├── config.py        # 支付汇率配置 API（async + 缓存）
-│       ├── contracts.py     # 合同/贷款产品 CRUD + 还款/逾期检测/结清 API（Phase 1 新增）
-│       └── dashboard.py     # 仪表盘统计 API
+│       ├── auth.py          # 登录/登出（bcrypt 验证 + JWT + session + 登录锁定）
+│       ├── customers.py     # 客户CRUD + 模拟支付 + 360视图 + 设备地图数据
+│       ├── config.py        # 支付汇率配置 API
+│       ├── contracts.py     # 合同/贷款产品 CRUD + 还款/逾期检测/结清
+│       ├── tokens.py        # Token 管理（列表/详情/补发/作废/批量生成）
+│       ├── alerts.py        # 告警中心（规则/列表/详情/认领/解决/升级）
+│       ├── dashboard.py     # 仪表盘统计（基础 + 增强）
+│       ├── reports.py       # 报表中心（汇总/ESG/CSV导出）
+│       ├── settings.py      # 系统设置（健康检查/汇率/模板/用户）
 ├── controller/
 │   ├── controller.py        # 终端 UI（9位Token输入/密钥绑定/count显示）
 │   └── state_manager.py     # 状态机 + PostgreSQL 持久化
@@ -210,31 +209,37 @@ paygo-platform/
 │   ├── test_models.py       # ORM 模型 (8 tests)
 │   ├── test_database.py     # 数据库连接池 (3 tests)
 │   ├── test_redis_client.py # Redis 客户端 (10 tests)
-│   ├── test_store.py        # 数据访问层 (23 tests, 含密钥加密+还款流)
+│   ├── test_security.py     # 安全模块 (10 tests, Phase 0)
+│   ├── test_middleware.py   # 限流+日志中间件 (2 tests, Phase 0)
+│   ├── test_store.py        # 数据访问层 (36 tests, 含密钥加密+还款流+360+Token+告警)
 │   ├── test_auth.py         # 认证 (8 tests, 含登录锁定)
-│   ├── test_customers_api.py# 客户API (22 tests)
+│   ├── test_customers_api.py# 客户API (26 tests)
+│   ├── test_contract_models.py  # 合同+还款记录模型 (7 tests, Phase 1)
+│   ├── test_contract_store.py   # 合同 store 层 (21 tests, Phase 1)
+│   ├── test_contracts_api.py    # 合同 API (9 tests, Phase 1)
+│   ├── test_dashboard_api.py    # 仪表盘 API (4 tests)
+│   ├── test_tokens_api.py   # Token 管理 API (6 tests, Phase 2)
+│   ├── test_alerts_api.py   # 告警中心 API (5 tests, Phase 4)
+│   ├── test_alert_store.py  # 告警 store 层 (5 tests, Phase 4)
 │   ├── test_state_manager.py# 状态机 (19 tests)
 │   ├── test_config_api.py   # 支付汇率 (2 tests)
 │   ├── test_controller_integration.py  # 控制器集成 (4 tests)
 │   ├── test_integration.py  # 端到端集成 (6 tests)
-│   ├── test_upgrade.py      # 五场景 MFI 演示 (9 tests)
-│   ├── test_contract_models.py  # 合同+还款记录模型 (7 tests, Phase 1)
-│   ├── test_contract_store.py   # 合同 store 层 (21 tests, Phase 1)
-│   ├── test_contracts_api.py    # 合同 API (9 tests, Phase 1)
-│   ├── test_dashboard_api.py    # 仪表盘 API (2 tests)
-│   ├── test_security.py     # 安全模块 (10 tests, Phase 0)
-│   └── test_middleware.py   # 限流+日志中间件 (2 tests, Phase 0)
+│   └── test_upgrade.py      # 五场景 MFI 演示 (9 tests)
 ├── docs/
 │   ├── debug-controller.md
 │   ├── controller-redeploy.md
 │   └── superpowers/
 │       ├── specs/           # 设计文档
-│       └── plans/           # 实施计划
+│       └── plans/           # 实施计划（Phase 0-8）
+├── scripts/
+│   └── seed_demo_data.py    # 演示数据初始化（4客户+GPS+MFI+标签）
 ├── requirements.txt
-├── README.md
-├── CLAUDE.md                # 本文件
+├── README.md                # 运营操作手册（35步验证清单）
+├── CLAUDE.md                # 本文件（项目上下文+规范）
+├── PAYGO平台升级迭代计划.md  # 详细升级计划（9 Phase全记录）
+├── PAYGO平台演示流程手册.md  # 演示流程手册（4角色+23步+截图）
 ├── AGENTS.md                # 代理角色定义
-├── cookies.txt
 └── .superpowers/            # Superpowers 框架配置
 ```
 
@@ -261,7 +266,10 @@ paygo-platform/
 # 开发环境启动
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 运行所有测试（165 个）
+# 加载演示数据（首次使用）
+PYTHONPATH="." python scripts/seed_demo_data.py
+
+# 运行所有测试（200 个）
 pytest tests/ -v
 
 # 运行单个测试文件
@@ -316,3 +324,6 @@ http://localhost:8000/dashboard
 | `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | 登录接口限流（次/分钟/IP） |
 | `LOGIN_MAX_FAILURES` | `5` | 登录失败锁定阈值 |
 | `LOGIN_LOCKOUT_MINUTES` | `15` | 登录锁定时间（分钟） |
+| `JWT_SECRET_KEY` | (内置默认) | JWT 签名密钥（生产必须覆盖） |
+| `JWT_ACCESS_TOKEN_EXPIRE` | `15` | JWT Access Token 有效期（分钟） |
+| `JWT_REFRESH_TOKEN_EXPIRE` | `7` | JWT Refresh Token 有效期（天） |
