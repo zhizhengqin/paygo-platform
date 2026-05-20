@@ -107,11 +107,12 @@ async def get_tokens(db: AsyncSession) -> list[dict]:
 
 
 async def add_token(db: AsyncSession, customer_id: str, token: str,
-                    days: int, count: int, amount: float = 0) -> str:
+                    days: int, count: int, amount: float = 0,
+                    contract_id: str = None) -> str:
     tid = _new_id("T")
     t = Token(
         id=tid, customer_id=customer_id, token=token, days=days,
-        count=count, amount=amount,
+        count=count, amount=amount, contract_id=contract_id,
         generated_at=datetime.now(), expires_at=datetime.now() + timedelta(days=7),
     )
     db.add(t)
@@ -189,6 +190,11 @@ def _token_to_dict(t: Token) -> dict:
         "days": t.days,
         "amount": float(t.amount) if t.amount else 0,
         "count": t.count,
+        "status": t.status or "UNUSED",
+        "contract_id": t.contract_id,
+        "voided_by": t.voided_by,
+        "void_reason": t.void_reason,
+        "superseded_by": t.superseded_by,
         "generated_at": t.generated_at.strftime("%Y-%m-%d %H:%M:%S") if t.generated_at else None,
         "expires_at": t.expires_at.strftime("%Y-%m-%d %H:%M:%S") if t.expires_at else None,
     }
@@ -755,3 +761,133 @@ async def settle_contract(db: AsyncSession, cid: str) -> dict | None:
         "token": token_str,
         "sms": {"to": customer.phone, "message": message},
     }
+
+
+# ============================================================
+# Token 管理增强 — 筛选/统计/详情/补发/作废
+# ============================================================
+
+async def get_tokens_filtered(
+    db: AsyncSession,
+    customer_id: str = None,
+    status: str = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """Token 列表 — 支持按客户/状态筛选 + 分页"""
+    q = select(Token).order_by(Token.generated_at.desc())
+    if customer_id:
+        q = q.where(Token.customer_id == customer_id)
+    if status:
+        q = q.where(Token.status == status)
+    q = q.limit(limit).offset(offset)
+    result = await db.execute(q)
+    return [_token_to_dict(t) for t in result.scalars().all()]
+
+
+async def get_token_stats(db: AsyncSession) -> dict:
+    """Token 统计卡片"""
+    from datetime import datetime
+    now = datetime.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    total_result = await db.execute(select(func.count()).select_from(Token))
+    total = total_result.scalar() or 0
+
+    today_result = await db.execute(
+        select(func.count()).select_from(Token).where(Token.generated_at >= today_start)
+    )
+    today = today_result.scalar() or 0
+
+    month_result = await db.execute(
+        select(func.count()).select_from(Token).where(Token.generated_at >= month_start)
+    )
+    this_month = month_result.scalar() or 0
+
+    superseded_result = await db.execute(
+        select(func.count()).select_from(Token).where(Token.status == "SUPERSEDED")
+    )
+    superseded = superseded_result.scalar() or 0
+
+    return {
+        "total": total,
+        "today": today,
+        "this_month": this_month,
+        "superseded": superseded,
+    }
+
+
+async def get_token_detail(db: AsyncSession, tid: str) -> dict | None:
+    """Token 详情 — 含客户名和关联信息"""
+    result = await db.execute(
+        select(Token, Customer.name)
+        .join(Customer, Token.customer_id == Customer.id, isouter=True)
+        .where(Token.id == tid)
+    )
+    row = result.first()
+    if not row:
+        return None
+    t, customer_name = row
+    d = _token_to_dict(t)
+    d["customer_name"] = customer_name or "-"
+    d["status"] = t.status or "UNUSED"
+    d["voided_by"] = t.voided_by
+    d["void_reason"] = t.void_reason
+    d["voided_at"] = t.voided_at.strftime("%Y-%m-%d %H:%M:%S") if t.voided_at else None
+    d["superseded_by"] = t.superseded_by
+    return d
+
+
+async def reissue_token(db: AsyncSession, original_tid: str, reason: str = "") -> dict | None:
+    """补发 Token：验证原 Token 状态 → 生成新 Token(Counter+1) → 标记原 Token"""
+    orig = await db.get(Token, original_tid)
+    if not orig or orig.status == "SUPERSEDED":
+        return None
+
+    customer = await db.get(Customer, orig.customer_id)
+    if not customer:
+        return None
+
+    raw_key = decrypt_secret(customer.secret_key_encrypted) if customer.secret_key_encrypted else customer.secret_key
+    if not raw_key:
+        return None
+
+    from openpaygo import generate_token, TokenType as OT
+    new_count, token_str = generate_token(
+        secret_key=raw_key, count=customer.count + 1,
+        value=orig.days if orig.days != -1 else None,
+        token_type=OT.DISABLE_PAYG if orig.days == -1 else OT.ADD_TIME,
+    )
+    customer.count = new_count
+
+    new_tid = _new_id("T")
+    new_t = Token(
+        id=new_tid, customer_id=customer.id, token=token_str,
+        days=orig.days, count=new_count, amount=float(orig.amount or 0),
+        contract_id=orig.contract_id, status="UNUSED",
+    )
+    db.add(new_t)
+    await db.flush()
+
+    orig.status = "SUPERSEDED"
+    orig.superseded_by = new_tid
+    orig.void_reason = reason or "补发"
+    orig.voided_at = datetime.now()
+
+    await db.commit()
+    return {"token_id": new_tid, "token": token_str, "days": orig.days,
+            "superseded_id": original_tid}
+
+
+async def void_token(db: AsyncSession, tid: str, operator: str, reason: str = "") -> bool:
+    """作废 Token：标记 SUPERSEDED + 记录操作人"""
+    t = await db.get(Token, tid)
+    if not t:
+        return False
+    t.status = "SUPERSEDED"
+    t.voided_by = operator
+    t.void_reason = reason
+    t.voided_at = datetime.now()
+    await db.commit()
+    return True

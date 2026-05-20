@@ -238,3 +238,99 @@ class TestSecretKeyEncryption:
         c2 = result.scalar()
         assert c2.secret_key_encrypted is not None
         assert c2.secret_key is None
+
+
+from app.store import (
+    get_tokens_filtered, get_token_stats, get_token_detail,
+    reissue_token, void_token,
+)
+
+
+class TestTokenManagement:
+    async def _setup_tokens(self, session):
+        """创建测试客户 + 3 个 Token"""
+        from app.security import init_fernet
+        init_fernet()
+        cid = await add_customer(session, "TokTest", "+8551", "DEV-T1", "a" * 32)
+        for i in range(3):
+            await add_token(session, cid, f"12345678{i}", 30, i + 1, amount=5.0)
+        return cid
+
+    async def test_get_tokens_filtered_all(self, session):
+        """筛选：全部 Token"""
+        await self._setup_tokens(session)
+        all_tokens = await get_tokens_filtered(session)
+        assert len(all_tokens) == 3
+
+    async def test_get_tokens_filtered_by_customer(self, session):
+        """筛选：按客户"""
+        cid = await self._setup_tokens(session)
+        by_customer = await get_tokens_filtered(session, customer_id=cid)
+        assert len(by_customer) == 3
+        empty = await get_tokens_filtered(session, customer_id="NONEXIST")
+        assert len(empty) == 0
+
+    async def test_get_token_stats(self, session):
+        """Token 统计"""
+        from app.security import init_fernet
+        init_fernet()
+        await self._setup_tokens(session)
+        stats = await get_token_stats(session)
+        assert stats["total"] == 3
+        assert stats["today"] >= 0
+        assert stats["this_month"] >= 0
+
+    async def test_get_token_detail(self, session):
+        """Token 详情含客户名"""
+        from app.security import init_fernet
+        init_fernet()
+        await self._setup_tokens(session)
+        all_tokens = await get_tokens_filtered(session)
+        tid = all_tokens[0]["id"]
+        detail = await get_token_detail(session, tid)
+        assert detail is not None
+        assert detail["customer_name"] == "TokTest"
+        assert detail["status"] == "UNUSED"
+
+    async def test_reissue_token_success(self, session):
+        """补发 Token：生成新 Token + 标记原 Token"""
+        from app.security import init_fernet
+        init_fernet()
+        await self._setup_tokens(session)
+        all_tokens = await get_tokens_filtered(session)
+        original = all_tokens[0]
+
+        result = await reissue_token(session, original["id"], reason="SMS 未送达")
+        assert result is not None
+        assert result["token"] != original["token"]
+        assert result["superseded_id"] == original["id"]
+
+        # 原 Token 状态变 SUPERSEDED
+        orig_detail = await get_token_detail(session, original["id"])
+        assert orig_detail["status"] == "SUPERSEDED"
+
+    async def test_void_token_success(self, session):
+        """作废 Token"""
+        from app.security import init_fernet
+        init_fernet()
+        await self._setup_tokens(session)
+        all_tokens = await get_tokens_filtered(session)
+        tid = all_tokens[0]["id"]
+
+        ok = await void_token(session, tid, "admin", "安全原因")
+        assert ok is True
+
+        detail = await get_token_detail(session, tid)
+        assert detail["status"] == "SUPERSEDED"
+        assert detail["voided_by"] == "admin"
+
+    async def test_reissue_already_superseded_fails(self, session):
+        """已作废 Token 不可补发"""
+        from app.security import init_fernet
+        init_fernet()
+        await self._setup_tokens(session)
+        all_tokens = await get_tokens_filtered(session)
+        tid = all_tokens[0]["id"]
+        await void_token(session, tid, "admin", "test")
+        result = await reissue_token(session, tid, reason="test")
+        assert result is None
