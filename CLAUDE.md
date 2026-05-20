@@ -118,6 +118,22 @@
 - **新增依赖**：python-jose[cryptography]>=3.3.0
 - 200 tests
 
+### 设备控制器模拟器
+
+平台内置 **Web 版 PAYGO 控制器模拟器**，可在桌面或安卓手机浏览器直接访问，模拟 Dongle 硬件行为：
+
+- **访问地址**：`http://<host>:8000/controller`（导航栏「📱 设备模拟器」入口）
+- **功能**：
+  - 下拉选择平台已注册设备 → 显示密钥/状态/Count/继电器
+  - 输入 9 位 OpenPAYGO Token → 服务端解码验证
+  - DISABLE_PAYG Token → 永久解锁，ADD_TIME Token → 延长天数
+  - 验证成功后返回剩余天数，继电器状态实时更新
+  - Token 防重放：已使用 Token 返回「Token 已使用（防重放）」
+- **技术实现**：`app/routers/controller.py`（POST /api/controller/validate-token）+ `templates/controller.html`（深色终端风格 UI）
+- **原型阶段**：Token 在服务端用 OpenPAYGO 库验证（与真实 Dongle 本地验证等价），设备状态变更写回 PostgreSQL
+
+还有**桌面终端模拟器**：`controller/controller.py`，在终端运行，直接连接 PostgreSQL 本地解码 Token，适合开发调试。
+
 ### 全部 8 个 Tab 导航结构
 ```
 运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置

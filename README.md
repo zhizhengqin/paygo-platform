@@ -201,7 +201,60 @@ draft（草稿）→ active（执行中）→ overdue（逾期）→ closed（�
 
 ---
 
-### 2.4 运营专员 + 技术支持：告警处理
+### 2.4 设备控制器模拟（Web + 终端双模式）
+
+**目标**：模拟 PAYGO Dongle 硬件行为，验证 Token 输入→设备解锁/续期的完整链路
+
+#### Web 版模拟器（推荐，安卓手机可用）
+
+1. 点击导航栏右上角「**📱 设备模拟器**」或直接访问 `/controller`
+2. 页面展示深色终端风格界面
+3. 下拉选择要模拟的设备（如 `Sok Heng · DEV-KH-001`）
+
+**界面显示**：
+```
+── 太阳能控制器 ──────────────────
+设备   DEV-KH-001
+客户   Sok Heng
+密钥   a1b2c3d4…
+状态   已激活
+Count  4
+继电器 ● 供电中
+```
+
+**输入 Token 验证**：
+1. 在平台完成一笔模拟支付 → 获得 9 位 Token（如 `023554141`）
+2. 在控制器页面的输入框输入 Token
+3. 点击「验证 Token」或按回车
+4. 验证成功：`✓ 验证成功 · +30 天`
+5. 验证失败：`✗ Token 无效` 或 `✗ Token 已使用（防重放）`
+6. DISABLE_PAYG Token：`✓✓ 贷款已结清 · 设备永久解锁`
+
+**安卓手机访问**：
+```
+1. 手机连接与服务器同一 WiFi
+2. 浏览器打开 http://<服务器局域网IP>:8000/controller
+3. 登录平台 → 选择设备 → 输入 Token
+```
+
+#### 终端模拟器（桌面开发调试）
+
+```bash
+cd paygo-platform
+source venv/bin/activate
+cd controller && python controller.py
+```
+
+终端界面提供完整的 Dongle 模拟：
+- 初始设置输入 32 位 hex 密钥
+- N 键输入 9 位 Token → 本地 OpenPAYGO 解码验证
+- D 键快进天数（模拟时间流逝）
+- R 键重置设备
+- 实时显示：密钥/状态/剩余天数/继电器/Count
+
+---
+
+### 2.5 告警处理（运营专员 + 技术支持）
 
 **目标**：处理平台告警，走通认领→处理→关闭工作流
 
@@ -238,7 +291,7 @@ draft（草稿）→ active（执行中）→ overdue（逾期）→ closed（�
 
 ---
 
-### 2.5 技术支持：设备地图监控
+### 2.6 技术支持：设备地图监控
 
 **目标**：通过地图直观监控所有设备状态
 
@@ -260,7 +313,7 @@ draft（草稿）→ active（执行中）→ overdue（逾期）→ closed（�
 
 ---
 
-### 2.6 系统管理员：系统设置
+### 2.7 系统管理员：系统设置
 
 **目标**：管理平台基础配置和用户
 
@@ -305,6 +358,9 @@ draft（草稿）→ active（执行中）→ overdue（逾期）→ closed（�
 □ 13. [合同管理] 模拟还款第1期 → Token 生成，进度条更新
 □ 14. [合同管理] 点击检测逾期 → 逾期合同标记
 □ 15. [合同管理] 提前结清 → DISABLE_PAYG Token 生成
+□ 15a.[控制器] 打开 /controller → 选择设备 → 输入 Token → 验证成功
+□ 15b.[控制器] 尝试输入已使用 Token → 防重放拒绝
+□ 15c.[控制器] DISABLE_PAYG Token → 永久解锁提示
 □ 16. [Token管理] 切换 tab → Token 列表显示
 □ 17. [Token管理] 查看统计卡片（总数/今日/本月/已作废）
 □ 18. [Token管理] 点击 Token 查看详情
@@ -435,6 +491,7 @@ PYTHONPATH="." python scripts/seed_demo_data.py
 | GET | `/api/settings/users` | 用户列表 |
 | POST | `/api/settings/users` | 新增用户 |
 | GET | `/api/v1/health` | API v1 健康探活 |
+| POST | `/api/controller/validate-token` | 控制器 Token 验证（Web 模拟器用） |
 
 ### curl 示例
 
