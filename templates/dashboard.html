@@ -579,6 +579,13 @@ async function selectContract(cid) {
     overdue: '逾期', closed: '已结清', recovered: '已回收',
   };
 
+  const paidCount = c.schedules ? c.schedules.filter(function(s) { return s.status === 'paid'; }).length : 0;
+  const totalCount = c.schedules ? c.schedules.length : 0;
+  const progressPct = totalCount > 0 ? Math.round(paidCount / totalCount * 100) : 0;
+
+  // 待还期数（取前3个用于快捷还款按钮）
+  const pendingSchedules = c.schedules ? c.schedules.filter(function(s) { return s.status === 'pending'; }) : [];
+
   document.getElementById('detailPanel').innerHTML = `
     <div class="detail-card">
       <div class="detail-header">
@@ -596,15 +603,43 @@ async function selectContract(cid) {
         <div class="detail-row"><span class="label">合同期限</span><span class="value">${c.start_date || '—'} ~ ${c.end_date || '—'}</span></div>
         <div class="detail-row"><span class="label">剩余天数</span><span class="value">${c.remaining_days || 0} 天</span></div>
       </div>
+
+      ${totalCount > 0 ? `
+      <div class="detail-section">
+        <h4>还款进度 ${paidCount}/${totalCount} 期</h4>
+        <div style="background:#e2e8f0;border-radius:8px;height:24px;overflow:hidden;margin:8px 0;">
+          <div style="width:${progressPct}%;height:100%;background:linear-gradient(90deg,#059669,#10b981);border-radius:8px;transition:width 0.4s;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;">
+            ${progressPct > 10 ? progressPct + '%' : ''}
+          </div>
+        </div>
+        <span style="font-size:12px;color:#64748b;">${progressPct}% 已完成</span>
+      </div>
+      ` : ''}
+
+      ${c.status === 'active' && pendingSchedules.length > 0 ? `
+      <div class="detail-section">
+        <h4>模拟还款</h4>
+        <p style="color:#94a3b8;font-size:12px;margin-bottom:10px;">选择待还期数进行模拟还款（将生成 ADD_TIME Token）</p>
+        <div class="btn-group" style="flex-wrap:wrap;">
+          ${pendingSchedules.slice(0,3).map(function(s) {
+            return '<button class="btn btn-primary btn-sm" onclick="paySchedule(\'' + c.id + '\',\'' + s.id + '\',' + s.total.toFixed(2) + ')">第' + s.period_no + '期 · $' + s.total.toFixed(2) + ' · ' + s.due_date + '</button>';
+          }).join('')}
+        </div>
+      </div>
+      ` : ''}
+
       <div class="detail-section">
         <h4>操作</h4>
-        <div class="btn-group">
+        <div class="btn-group" style="flex-wrap:wrap;">
           ${c.status === 'draft' ? '<button class="btn btn-primary btn-sm" onclick="approveContract(\'' + c.id + '\')">审批通过</button>' : ''}
+          ${(c.status === 'active' || c.status === 'overdue') ? '<button class="btn btn-success btn-sm" onclick="settleContract(\'' + c.id + '\')">提前结清</button>' : ''}
           ${c.status === 'active' ? '<button class="btn btn-warning btn-sm" onclick="markOverdue(\'' + c.id + '\')">标记逾期</button>' : ''}
           ${c.status === 'overdue' ? '<button class="btn btn-primary btn-sm" onclick="markActive(\'' + c.id + '\')">恢复活跃</button>' : ''}
           ${(c.status === 'active' || c.status === 'overdue') ? '<button class="btn btn-danger btn-sm" onclick="closeContract(\'' + c.id + '\')">结清/回收</button>' : ''}
         </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="checkOverdue()">检测逾期</button>
       </div>
+
       ${c.schedules && c.schedules.length > 0 ? `
       <div class="detail-section">
         <h4>还款计划表</h4>
@@ -612,7 +647,7 @@ async function selectContract(cid) {
           <table class="tx-table">
             <thead><tr><th>期数</th><th>应还日</th><th>月供</th><th>本金</th><th>利息</th><th>剩余本金</th><th>状态</th></tr></thead>
             <tbody>
-              ${c.schedules.map(s => '<tr><td>' + s.period_no + '</td><td>' + s.due_date + '</td><td>$' + s.total.toFixed(2) + '</td><td>$' + s.principal.toFixed(2) + '</td><td>$' + s.interest.toFixed(2) + '</td><td>$' + s.balance.toFixed(2) + '</td><td>' + (s.status === 'paid' ? '✅' : s.status === 'overdue' ? '🔴' : '⏳') + '</td></tr>').join('')}
+              ${c.schedules.map(function(s) { return '<tr><td>' + s.period_no + '</td><td>' + s.due_date + '</td><td>$' + s.total.toFixed(2) + '</td><td>$' + s.principal.toFixed(2) + '</td><td>$' + s.interest.toFixed(2) + '</td><td>$' + s.balance.toFixed(2) + '</td><td>' + (s.status === 'paid' ? '已付' : s.status === 'overdue' ? '逾期' : '待还') + '</td></tr>'; }).join('')}
             </tbody>
           </table>
         </div>
@@ -657,6 +692,54 @@ async function closeContract(cid) {
   });
   selectContract(cid);
   showToast(status === 'closed' ? '合同已结清' : '合同已标记为设备回收');
+}
+
+async function paySchedule(contractId, scheduleId, amount) {
+  const resp = await fetch('/api/contracts/' + encodeURIComponent(contractId) + '/pay', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({schedule_id: scheduleId, amount: amount})
+  });
+  if (!resp.ok) {
+    const err = await resp.json();
+    showToast('还款失败: ' + (err.detail || ''));
+    return;
+  }
+  const data = await resp.json();
+  document.getElementById('tokenResultTitle').textContent = '还款成功 - 激活码已生成';
+  document.getElementById('tokenCode').textContent = data.token;
+  document.getElementById('smsTo').textContent = 'SIMULATED';
+  document.getElementById('smsBody').textContent =
+    '[PAYGO Solar] 您已成功还款 $' + amount.toFixed(2) + '。激活码：' + data.token + '。有效期30天。请尽快输入您的设备。';
+  document.getElementById('tokenResultModal').classList.add('show');
+  // 延迟刷新合同详情以显示更新后的还款进度
+  setTimeout(function() { selectContract(contractId); }, 500);
+}
+
+async function settleContract(contractId) {
+  if (!confirm('确定要结清此合同吗？将生成永久解锁码（DISABLE_PAYG），此操作不可撤销。')) return;
+  const resp = await fetch('/api/contracts/' + encodeURIComponent(contractId) + '/settle', {
+    method: 'POST'
+  });
+  if (!resp.ok) {
+    const err = await resp.json();
+    showToast('结清失败: ' + (err.detail || ''));
+    return;
+  }
+  const data = await resp.json();
+  document.getElementById('tokenResultTitle').textContent = '合同已结清 - 永久解锁码';
+  document.getElementById('tokenCode').textContent = data.token;
+  document.getElementById('smsTo').textContent = data.sms.to;
+  document.getElementById('smsBody').textContent = data.sms.message;
+  document.getElementById('tokenResultModal').classList.add('show');
+  setTimeout(function() { selectContract(contractId); }, 500);
+}
+
+async function checkOverdue() {
+  const resp = await fetch('/api/contracts/check-overdue', { method: 'POST' });
+  const data = await resp.json();
+  showToast('检测完成：' + data.count + ' 条逾期计划已处理');
+  if (selectedContractId) selectContract(selectedContractId);
 }
 
 async function showNewContractModal() {
