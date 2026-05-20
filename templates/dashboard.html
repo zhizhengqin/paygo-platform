@@ -165,6 +165,12 @@ function switchTab(tab) {
     selectedCustomerId = null;
     selectedContractId = null;
     loadContracts();
+  } else if (tab === 'tokens') {
+    layout.classList.remove('sidebar-hidden');
+    selectedCustomerId = null;
+    selectedContractId = null;
+    selectedTokenId = null;
+    loadTokens();
   }
 }
 
@@ -805,6 +811,118 @@ async function showLoanProductModal() {
       </div>
     </div>
   `;
+}
+// ---- Token 管理 ----
+let selectedTokenId = null;
+
+async function loadTokens() {
+  const statsResp = await fetch('/api/tokens/stats');
+  const stats = await statsResp.json();
+
+  const tokensResp = await fetch('/api/tokens?limit=100');
+  const tokens = await tokensResp.json();
+
+  const container = document.getElementById('customerItems');
+  document.querySelector('.sidebar-header h3').textContent = 'Token 列表';
+  document.querySelector('.sidebar-header h3').onclick = null;
+  document.getElementById('customerCount').textContent = tokens.length;
+
+  const keygenSection = document.querySelector('.keygen-section');
+  if (keygenSection) {
+    keygenSection.innerHTML = `
+      <div class="keygen-title">Token 统计</div>
+      <div style="padding:8px 12px;font-size:12px;color:#475569;line-height:1.6;">
+        <div>总数: <strong>${stats.total}</strong> · 今日: <strong>${stats.today}</strong></div>
+        <div>本月: <strong>${stats.this_month}</strong> · 已作废: <strong>${stats.superseded}</strong></div>
+      </div>
+    `;
+  }
+
+  const STATUS_DOT_T = { 'UNUSED':'⚪', 'USED':'🟢', 'SUPERSEDED':'🔴' };
+
+  container.innerHTML = tokens.map(function(t) {
+    return '<div class="customer-item ' + (t.id === selectedTokenId ? 'active' : '') + '" onclick="selectToken(\'' + t.id + '\')">' +
+      '<div class="name">' + (STATUS_DOT_T[t.status] || '⚪') + ' ' + t.token + '</div>' +
+      '<div class="meta">' + escapeHtml(t.customer_id || '—') + ' · ' + t.days + '天 · ' + (t.status || 'UNUSED') + '</div>' +
+      '</div>';
+  }).join('');
+
+  if (!selectedTokenId) {
+    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>选择左侧 Token 查看详情</p></div>';
+  }
+}
+
+async function selectToken(tid) {
+  selectedTokenId = tid;
+  document.querySelectorAll('.nav-tab').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.tab === 'tokens');
+  });
+  document.querySelector('.main-layout').classList.remove('sidebar-hidden');
+  await loadTokens();
+
+  const resp = await fetch('/api/tokens/' + encodeURIComponent(tid));
+  const t = await resp.json();
+
+  const STATUS_LABEL_T = { 'UNUSED':'未使用', 'USED':'已使用', 'SUPERSEDED':'已作废' };
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="detail-card">
+      <div class="detail-header">
+        <div class="detail-avatar">T</div>
+        <div>
+          <h2>${t.token}</h2>
+          <span class="status-badge">${STATUS_LABEL_T[t.status] || t.status}</span>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-row"><span class="label">Token 值</span><span class="value-mono">${t.token}</span></div>
+        <div class="detail-row"><span class="label">类型</span><span class="value">${t.days === -1 ? 'DISABLE_PAYG (永久解锁)' : 'ADD_TIME (' + t.days + '天)'}</span></div>
+        <div class="detail-row"><span class="label">客户</span><span class="value">${escapeHtml(t.customer_name || '—')} (${t.customer_id})</span></div>
+        <div class="detail-row"><span class="label">金额</span><span class="value">$${t.amount.toFixed(2)}</span></div>
+        <div class="detail-row"><span class="label">Counter</span><span class="value">${t.count}</span></div>
+        <div class="detail-row"><span class="label">生成时间</span><span class="value">${t.generated_at || '—'}</span></div>
+        <div class="detail-row"><span class="label">过期时间</span><span class="value">${t.expires_at || '—'}</span></div>
+        ${t.contract_id ? '<div class="detail-row"><span class="label">关联合同</span><span class="value">' + t.contract_id + '</span></div>' : ''}
+        ${t.status === 'SUPERSEDED' ? '<div class="detail-row"><span class="label">作废操作人</span><span class="value">' + escapeHtml(t.voided_by || '—') + '</span></div>' : ''}
+        ${t.status === 'SUPERSEDED' ? '<div class="detail-row"><span class="label">作废原因</span><span class="value">' + escapeHtml(t.void_reason || '—') + '</span></div>' : ''}
+        ${t.superseded_by ? '<div class="detail-row"><span class="label">替换 Token ID</span><span class="value">' + t.superseded_by + '</span></div>' : ''}
+      </div>
+      <div class="detail-section">
+        <h4>操作</h4>
+        <div class="btn-group">
+          ${t.status !== 'SUPERSEDED' ? '<button class="btn btn-warning btn-sm" onclick="doVoidToken(\'' + t.id + '\')">作废 Token</button>' : ''}
+          ${t.status === 'UNUSED' ? '<button class="btn btn-primary btn-sm" onclick="doReissueToken(\'' + t.id + '\')">补发 Token</button>' : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function doVoidToken(tid) {
+  const reason = prompt('请输入作废原因：');
+  if (!reason) return;
+  const resp = await fetch('/api/tokens/' + encodeURIComponent(tid) + '/void', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({reason: reason})
+  });
+  if (!resp.ok) { showToast('作废失败'); return; }
+  showToast('Token 已作废');
+  selectToken(tid);
+}
+
+async function doReissueToken(tid) {
+  if (!confirm('确定要补发此 Token 吗？原 Token 将被标记为已作废。')) return;
+  const resp = await fetch('/api/tokens/' + encodeURIComponent(tid) + '/reissue', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({reason: '手动补发'})
+  });
+  if (!resp.ok) { const err = await resp.json(); showToast('补发失败: ' + (err.detail || '')); return; }
+  const data = await resp.json();
+  showToast('新 Token 已生成: ' + data.token);
+  selectedTokenId = null;
+  loadTokens();
 }
 </script>
 {% endblock %}
