@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 <div class="main-layout">
   <!-- 左侧面板 -->
   <aside class="sidebar">
@@ -240,112 +241,186 @@ function copyKey(key, btn) {
   }).catch(() => { showToast('复制失败，请手动选择'); });
 }
 
-// ---- 仪表盘首页 ----
+// ---- 仪表盘首页 (增强版) ----
 async function showDashboard() {
   selectedCustomerId = null;
   await loadCustomers();
-  try {
-    const resp = await fetch('/api/dashboard/stats');
-    if (!resp.ok) throw new Error(resp.statusText);
-    const stats = await resp.json();
+
+  var days = 30;
+  var resp = await fetch('/api/dashboard/enhanced-stats?days=' + days);
+  if (!resp.ok) {
+    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
+    return;
+  }
+  var stats = await resp.json();
+  var k = stats.kpi;
 
   document.getElementById('detailPanel').innerHTML = `
     <div id="dashboardHome">
       <div class="dash-header">
         <h2>运营仪表盘</h2>
-        <span class="dash-date" id="dashDate"></span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <select id="mfiFilter" onchange="showDashboard()" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;">
+            <option value="">全部 MFI</option>
+          </select>
+          <div class="btn-group" style="margin:0;">
+            <button class="btn btn-outline btn-sm" onclick="showDashboardWithDays(7)">7天</button>
+            <button class="btn btn-outline btn-sm" onclick="showDashboardWithDays(30)" style="background:#059669;color:#fff;">30天</button>
+            <button class="btn btn-outline btn-sm" onclick="showDashboardWithDays(90)">90天</button>
+          </div>
+        </div>
       </div>
 
-      <div class="kpi-grid">
-        <div class="kpi-card kpi-blue">
-          <div class="kpi-value">${stats.total_customers}</div>
-          <div class="kpi-label">总客户数</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+        <div class="kpi-card kpi-blue" onclick="switchTab('customers')">
+          <div class="kpi-value">${k.total_customers}</div><div class="kpi-label">总客户数</div>
         </div>
-        <div class="kpi-card kpi-green">
-          <div class="kpi-value">${stats.active_devices}</div>
-          <div class="kpi-label">活跃设备</div>
+        <div class="kpi-card kpi-green" onclick="switchTab('customers')">
+          <div class="kpi-value">${k.active_devices}</div><div class="kpi-label">活跃设备</div>
         </div>
         <div class="kpi-card kpi-gold">
-          <div class="kpi-value">$${stats.monthly_revenue.toFixed(2)}</div>
-          <div class="kpi-label">本月收入 (USD)</div>
+          <div class="kpi-value">$${k.monthly_revenue.toFixed(0)}</div><div class="kpi-label">本月收入 (USD)</div>
         </div>
-        <div class="kpi-card kpi-red">
-          <div class="kpi-value">${stats.locked_devices}</div>
-          <div class="kpi-label">逾期锁定</div>
+        <div class="kpi-card kpi-red" onclick="switchTab('alerts')">
+          <div class="kpi-value">${k.locked_devices}</div><div class="kpi-label">逾期锁定 (${k.overdue_rate}%)</div>
+        </div>
+        <div class="kpi-card" style="border-left:4px solid #3b82f6;">
+          <div class="kpi-value">${k.token_month}</div><div class="kpi-label">本月 Token 生成</div>
+        </div>
+        <div class="kpi-card" style="border-left:4px solid #8b5cf6;">
+          <div class="kpi-value">${k.contracts_active}</div><div class="kpi-label">执行中合同</div>
+        </div>
+        <div class="kpi-card" style="border-left:4px solid #dc2626;">
+          <div class="kpi-value">${k.alert_pending}</div><div class="kpi-label" onclick="switchTab('alerts')" style="cursor:pointer;">待处理告警</div>
+        </div>
+        <div class="kpi-card" style="border-left:4px solid #059669;">
+          <div class="kpi-value">${k.overdue_rate}%</div><div class="kpi-label">逾期率</div>
         </div>
       </div>
 
       <div class="dash-grid">
-        <div class="dash-chart-box">
-          <h4>设备状态分布</h4>
-          <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
-        </div>
+        <div class="dash-chart-box"><h4>收入趋势 (近${days}天)</h4><div class="chart-wrap"><div id="revenueChart" style="height:250px;"></div></div></div>
+        <div class="dash-chart-box"><h4>Token 生成趋势</h4><div class="chart-wrap"><div id="tokenChart" style="height:250px;"></div></div></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-chart-box"><h4>告警级别分布</h4><div class="chart-wrap"><div id="alertLevelChart" style="height:200px;"></div></div></div>
+        <div class="dash-chart-box"><h4>近7天告警趋势</h4><div class="chart-wrap"><div id="alertTrendChart" style="height:200px;"></div></div></div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-chart-box"><h4>设备状态分布</h4><div class="chart-wrap"><div id="deviceStatusChart" style="height:200px;"></div></div></div>
         <div class="dash-table-box">
           <h4>最近交易</h4>
-          <table class="tx-table" id="txTable">
-            <thead><tr><th>时间</th><th>客户</th><th>金额</th><th>天数</th></tr></thead>
-            <tbody></tbody>
-          </table>
+          <table class="tx-table"><thead><tr><th>时间</th><th>客户</th><th>金额</th><th>天数</th></tr></thead><tbody id="txTableBody"></tbody></table>
         </div>
       </div>
     </div>
   `;
 
-  document.getElementById('dashDate').textContent =
-    new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric'});
+  // Load MFI filter
+  try {
+    var mfisResp = await fetch('/api/mfis');
+    var mfis = await mfisResp.json();
+    var sel = document.getElementById('mfiFilter');
+    mfis.forEach(function(m) { sel.innerHTML += '<option value="' + m.id + '">' + escapeHtml(m.name) + '</option>'; });
+  } catch(e) {}
 
-  renderStatusChart(stats);
-  renderTxTable(stats.recent_transactions);
-  } catch (e) {
-    document.getElementById('detailPanel').innerHTML = `
-      <div class="empty-state"><p>加载仪表盘失败，请刷新重试</p></div>`;
-  }
+  // Render charts using ECharts
+  renderRevenueChart(stats.revenue_trend);
+  renderTokenChart(stats.token_trend);
+  renderAlertLevelChart(stats.alert_by_level);
+  renderAlertTrendChart(stats.alert_trend);
+  renderDeviceStatusChart(k);
+  renderTxTable();
 }
 
-function renderStatusChart(stats) {
-  const data = [stats.active_devices, stats.locked_devices, stats.permanent_devices];
-  if (data.every(d => d === 0)) {
-    document.querySelector('.chart-wrap').innerHTML = '<p style="text-align:center;color:#94a3b8;padding:60px 0;">暂无设备数据</p>';
-    return;
-  }
-  const ctx = document.getElementById('statusChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['活跃', '已锁定', '永久解锁'],
-      datasets: [{
-        data: data,
-        backgroundColor: ['#059669', '#dc2626', '#f59e0b'],
-        borderWidth: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { padding: 16, usePointStyle: true, pointStyleWidth: 10 }
-        }
-      }
-    }
+function showDashboardWithDays(d) {
+  document.querySelectorAll('#dashboardHome .btn-group .btn-sm').forEach(function(b,i) {
+    b.style.background = (i===0&&d===7)||(i===1&&d===30)||(i===2&&d===90) ? '#059669' : '';
+    b.style.color = (i===0&&d===7)||(i===1&&d===30)||(i===2&&d===90) ? '#fff' : '';
+  });
+  showDashboard();
+}
+
+function renderRevenueChart(data) {
+  var el = document.getElementById('revenueChart'); if (!el) return;
+  var chart = echarts.init(el);
+  chart.setOption({
+    tooltip: {trigger:'axis'},
+    grid: {left:50,right:20,top:20,bottom:30},
+    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:10,rotate:45}},
+    yAxis: {type:'value',axisLabel:{fontSize:10}},
+    series: [{type:'line',data:data.map(function(d){return d.amount;}),smooth:true,
+      lineStyle:{color:'#059669'},itemStyle:{color:'#059669'},areaStyle:{color:'rgba(5,150,105,0.1)'}}]
   });
 }
 
-function renderTxTable(transactions) {
-  const tbody = document.querySelector('#txTable tbody');
-  if (!transactions || transactions.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:24px;">暂无交易记录</td></tr>';
+function renderTokenChart(data) {
+  var el = document.getElementById('tokenChart'); if (!el) return;
+  var chart = echarts.init(el);
+  chart.setOption({
+    tooltip: {trigger:'axis'},
+    grid: {left:50,right:20,top:20,bottom:30},
+    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:10,rotate:45}},
+    yAxis: {type:'value',axisLabel:{fontSize:10}},
+    series: [{type:'bar',data:data.map(function(d){return d.count;}),
+      itemStyle:{color:'#3b82f6',borderRadius:[4,4,0,0]}}]
+  });
+}
+
+function renderAlertLevelChart(data) {
+  var el = document.getElementById('alertLevelChart'); if (!el) return;
+  var chart = echarts.init(el);
+  chart.setOption({
+    tooltip: {trigger:'item'},
+    series: [{type:'pie',radius:['40%','70%'],
+      data:[{value:data.P0,name:'P0',itemStyle:{color:'#dc2626'}},
+            {value:data.P1,name:'P1',itemStyle:{color:'#f59e0b'}},
+            {value:data.P2,name:'P2',itemStyle:{color:'#3b82f6'}}],
+      label:{formatter:'{b}: {c}'}}]
+  });
+}
+
+function renderAlertTrendChart(data) {
+  var el = document.getElementById('alertTrendChart'); if (!el) return;
+  var chart = echarts.init(el);
+  chart.setOption({
+    tooltip: {trigger:'axis'},
+    grid: {left:40,right:20,top:20,bottom:30},
+    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:10}},
+    yAxis: {type:'value',axisLabel:{fontSize:10}},
+    series: [{type:'line',data:data.map(function(d){return d.count;}),
+      lineStyle:{color:'#dc2626'},itemStyle:{color:'#dc2626'},areaStyle:{color:'rgba(220,38,38,0.08)'}}]
+  });
+}
+
+function renderDeviceStatusChart(k) {
+  var el = document.getElementById('deviceStatusChart'); if (!el) return;
+  var chart = echarts.init(el);
+  chart.setOption({
+    tooltip: {trigger:'item'},
+    series: [{type:'pie',radius:'60%',
+      data:[{value:k.active_devices,name:'活跃',itemStyle:{color:'#059669'}},
+            {value:k.locked_devices,name:'逾期锁定',itemStyle:{color:'#dc2626'}},
+            {value:k.permanent_devices,name:'永久解锁',itemStyle:{color:'#f59e0b'}}],
+      label:{formatter:'{b}: {c}'}}]
+  });
+}
+
+async function renderTxTable() {
+  var resp = await fetch('/api/dashboard/stats');
+  var stats = await resp.json();
+  var tbody = document.getElementById('txTableBody');
+  if (!tbody) return;
+  var txs = stats.recent_transactions || [];
+  if (txs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:24px;">暂无交易</td></tr>';
     return;
   }
-  tbody.innerHTML = transactions.map(t => `
-    <tr>
-      <td>${t.generated_at || '-'}</td>
-      <td>${escapeHtml(t.customer_name)}</td>
-      <td>$${t.amount.toFixed(2)}</td>
-      <td>${t.days === -1 ? '永久' : t.days + '天'}</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = txs.map(function(t) {
+    return '<tr><td>'+(t.generated_at||'-')+'</td><td>'+escapeHtml(t.customer_name)+'</td><td>$'+t.amount.toFixed(2)+'</td><td>'+(t.days===-1?'永久':t.days+'天')+'</td></tr>';
+  }).join('');
 }
 
 // ---- 客户列表 ----
