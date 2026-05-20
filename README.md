@@ -228,11 +228,11 @@ Count  4
 3. 点击「验证 Token」或按回车
 4. 验证成功：`✓ 验证成功 · +30 天`（见下方截图）
 
-![控制器验证成功](13-controller-validated.png)
+![控制器验证成功](docs/screenshots/13-controller-validated.png)
 
 5. 重复输入同一 Token → `✗ Token 已使用（防重放）`
 
-![控制器防重放](14-controller-replay.png)
+![控制器防重放](docs/screenshots/14-controller-replay.png)
 
 6. DISABLE_PAYG Token：`✓✓ 贷款已结清 · 设备永久解锁`
 

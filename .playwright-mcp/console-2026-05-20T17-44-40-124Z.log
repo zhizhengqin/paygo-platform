@@ -1,0 +1,6 @@
+[  455226ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/controller:27:78)
+[  456125ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/controller:28:78)
+[  456725ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/controller:29:72)
