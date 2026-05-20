@@ -31,61 +31,61 @@ async def report_summary(
     start_dt = datetime.combine(start, datetime.min.time())
     end_dt = datetime.combine(end, datetime.max.time())
 
-    # 新增客户
-    new_customers_r = await db.execute(
+    # 逐条查询并立即提取结果，避免异步 Result 被后续查询关闭
+    new_customers = (await db.execute(
         select(func.count()).select_from(Customer).where(
             Customer.created_at >= start_dt, Customer.created_at <= end_dt
         )
-    )
+    )).scalar() or 0
 
-    # Token 数量 + 收入
-    tokens_r = await db.execute(
-        select(
-            func.count(),
-            func.coalesce(func.sum(Token.amount), 0),
-        ).where(Token.generated_at >= start_dt, Token.generated_at <= end_dt)
-    )
-    token_count, total_revenue = tokens_r.first()
+    tokens_row = (await db.execute(
+        select(func.count(), func.coalesce(func.sum(Token.amount), 0))
+        .select_from(Token).where(
+            Token.generated_at >= start_dt, Token.generated_at <= end_dt
+        )
+    )).first()
+    token_count = tokens_row[0] or 0
+    total_revenue = float(tokens_row[1] or 0)
 
-    # 新增合同
-    new_contracts_r = await db.execute(
+    new_contracts = (await db.execute(
         select(func.count()).select_from(Contract).where(
             Contract.created_at >= start_dt, Contract.created_at <= end_dt
         )
-    )
+    )).scalar() or 0
 
-    # 告警数
-    alerts_r = await db.execute(
+    alert_count = (await db.execute(
         select(func.count()).select_from(Alert).where(
             Alert.triggered_at >= start_dt, Alert.triggered_at <= end_dt
         )
-    )
+    )).scalar() or 0
 
-    # 当前设备状态
-    active_r = await db.execute(
+    active_devices = (await db.execute(
         select(func.count()).select_from(Customer).where(Customer.status == "active")
-    )
-    locked_r = await db.execute(
-        select(func.count()).select_from(Customer).where(Customer.status == "locked")
-    )
-    total_r = await db.execute(select(func.count()).select_from(Customer))
+    )).scalar() or 0
 
-    total_customers = total_r.scalar() or 0
+    locked_devices = (await db.execute(
+        select(func.count()).select_from(Customer).where(Customer.status == "locked")
+    )).scalar() or 0
+
+    total_customers = (await db.execute(
+        select(func.count()).select_from(Customer)
+    )).scalar() or 0
+
     overdue_rate = (
-        round((locked_r.scalar() or 0) / total_customers * 100, 1)
+        round(locked_devices / total_customers * 100, 1)
         if total_customers > 0
         else 0
     )
 
     return {
         "period": {"start": str(start), "end": str(end)},
-        "new_customers": new_customers_r.scalar() or 0,
-        "token_count": token_count or 0,
-        "total_revenue": float(total_revenue or 0),
-        "new_contracts": new_contracts_r.scalar() or 0,
-        "alert_count": alerts_r.scalar() or 0,
-        "active_devices": active_r.scalar() or 0,
-        "locked_devices": locked_r.scalar() or 0,
+        "new_customers": new_customers,
+        "token_count": token_count,
+        "total_revenue": total_revenue,
+        "new_contracts": new_contracts,
+        "alert_count": alert_count,
+        "active_devices": active_devices,
+        "locked_devices": locked_devices,
         "total_customers": total_customers,
         "overdue_rate": overdue_rate,
     }

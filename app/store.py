@@ -1251,3 +1251,48 @@ async def get_enhanced_dashboard_stats(db: AsyncSession, days: int = 30, mfi_id:
         "alert_by_level": alert_by_level,
         "alert_trend": alert_trend,
     }
+
+
+# ============================================================
+# 批量 Token 生成 (Phase 2 补充)
+# ============================================================
+
+async def batch_generate_tokens(
+    db: AsyncSession,
+    customer_ids: list[str],
+    days: int,
+    token_type: str = "ADD_TIME",
+) -> list[dict]:
+    """批量生成 Token"""
+    from openpaygo import generate_token, TokenType as OT
+    type_map = {"ADD_TIME": OT.ADD_TIME, "SET_TIME": OT.SET_TIME,
+                "DISABLE_PAYG": OT.DISABLE_PAYG}
+    ot_type = type_map.get(token_type, OT.ADD_TIME)
+
+    results = []
+    for cid in customer_ids:
+        customer = await db.get(Customer, cid)
+        if not customer:
+            continue
+        raw_key = decrypt_secret(customer.secret_key_encrypted) if customer.secret_key_encrypted else customer.secret_key
+        if not raw_key:
+            continue
+
+        new_count, token_str = generate_token(
+            secret_key=raw_key, count=customer.count,
+            value=days if ot_type in (OT.ADD_TIME, OT.SET_TIME) else None,
+            token_type=ot_type,
+        )
+        customer.count = new_count
+        customer.status = "active"
+
+        tid = _new_id("T")
+        t = Token(id=tid, customer_id=cid, token=token_str, days=days,
+                  count=new_count, amount=0)
+        db.add(t)
+        results.append({"customer_id": cid, "token_id": tid, "token": token_str,
+                        "days": days, "status": "success"})
+
+    if results:
+        await db.commit()
+    return results

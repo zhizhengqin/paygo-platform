@@ -78,3 +78,20 @@ async def api_void_token(tid: str, body: VoidRequest, request: Request,
     if not ok:
         raise HTTPException(404, "Token 不存在")
     return {"ok": True}
+
+
+class BatchGenerate(BaseModel):
+    customer_ids: list[str]
+    days: int = 30
+    token_type: str = "ADD_TIME"
+
+
+@router.post("/batch-generate")
+async def api_batch_generate(body: BatchGenerate, request: Request,
+                             db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    from app.store import batch_generate_tokens
+    results = await batch_generate_tokens(
+        db, body.customer_ids, body.days, body.token_type,
+    )
+    return {"generated": len(results), "results": results}

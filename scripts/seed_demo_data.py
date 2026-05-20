@@ -6,7 +6,8 @@ from datetime import date, datetime
 from sqlalchemy import delete, text
 
 from app.database import engine, AsyncSessionLocal
-from app.models import Customer, Token, SmsRecord, PaymentRate, DeviceState, Contract, LoanProduct, RepaymentSchedule
+from app.models import Customer, Token, SmsRecord, PaymentRate, DeviceState, Contract, LoanProduct, RepaymentSchedule, Mfi
+from app.store import add_mfi
 from app.store import (
     add_customer, set_customer_count, update_customer_status,
     add_token, add_loan_product, add_contract,
@@ -106,6 +107,29 @@ async def create_demo_data():
         )
         await update_customer_status(db, c4_id, "locked")
         print(f"✓ 客户4: Sarun · 077123456 · DEV-KH-004 · 待签约(无合同)")
+
+        # ---- GPS + MFI 关联 ----
+        mfi_lolc = await add_mfi(db, "LOLC Cambodia", "Phnom Penh")
+        mfi_prasac = await add_mfi(db, "PRASAC", "Siem Reap")
+
+        c1 = await db.get(Customer, c1_id)
+        c1.gps_latitude = 11.5564; c1.gps_longitude = 104.9282
+        c1.address = "123 Norodom Blvd, Phnom Penh"; c1.mfi_id = mfi_lolc; c1.tags = ["VIP"]
+
+        c2 = await db.get(Customer, c2_id)
+        c2.gps_latitude = 13.3618; c2.gps_longitude = 103.8556
+        c2.address = "45 Wat Bo Rd, Siem Reap"; c2.mfi_id = mfi_prasac
+
+        c3 = await db.get(Customer, c3_id)
+        c3.gps_latitude = 10.6104; c3.gps_longitude = 103.5239
+        c3.address = "78 Ekareach St, Sihanoukville"; c3.mfi_id = mfi_lolc; c3.tags = ["高风险"]
+
+        c4 = await db.get(Customer, c4_id)
+        c4.gps_latitude = 12.5657; c4.gps_longitude = 104.9910
+        c4.address = "12 Riverside, Kampong Cham"; c4.mfi_id = mfi_prasac; c4.tags = ["新客户"]
+
+        await db.commit()
+        print(f"✓ GPS + MFI 关联完成")
 
         await db.commit()
         print(f"\n🎬 演示数据准备完毕! 4个客户 · 5个产品 · 3个合同 · 4笔支付")
