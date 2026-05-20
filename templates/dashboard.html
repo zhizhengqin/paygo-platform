@@ -195,6 +195,10 @@ function switchTab(tab) {
   } else if (tab === 'reports') {
     layout.classList.add('sidebar-hidden');
     showReports();
+  } else if (tab === 'settings') {
+    layout.classList.add('sidebar-hidden');
+    document.getElementById('customerItems').innerHTML = '';
+    showSettings();
   }
 }
 
@@ -1384,6 +1388,78 @@ async function showReportsWithDate() {
 
 function exportCSV() {
   window.open('/api/reports/export', '_blank');
+}
+
+// ---- 系统设置 ----
+async function showSettings() {
+  var healthResp = await fetch('/api/settings/health');
+  var health = await healthResp.json();
+  var mfisResp = await fetch('/api/mfis');
+  var mfis = await mfisResp.json();
+  var ratesResp = await fetch('/api/settings/payment-rates');
+  var rates = await ratesResp.json();
+  var usersResp = await fetch('/api/settings/users');
+  var users = await usersResp.json();
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div style="padding:24px;max-width:900px;">
+      <h2 style="margin-bottom:20px;">系统设置</h2>
+      <div class="dash-grid" style="margin-bottom:24px;">
+        <div class="dash-chart-box">
+          <h4>系统健康</h4>
+          <div style="padding:12px;font-size:14px;line-height:2;">
+            <div>数据库: <span style="color:${health.database==='ok'?'#059669':'#dc2626'};font-weight:600;">${health.database}</span></div>
+            <div>Redis: <span style="color:${health.redis==='ok'?'#059669':'#dc2626'};font-weight:600;">${health.redis}</span></div>
+            <div style="margin-top:8px;">整体状态: <strong>${health.status}</strong></div>
+          </div>
+        </div>
+        <div class="dash-table-box">
+          <h4>MFI 机构 (${mfis.length})</h4>
+          <div style="max-height:180px;overflow-y:auto;">${mfis.map(function(m){return '<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;">'+escapeHtml(m.name)+' <span style="color:#94a3b8;font-size:11px;">'+escapeHtml(m.branch||'')+'</span></div>';}).join('')}</div>
+          <div style="margin-top:8px;display:flex;gap:4px;">
+            <input type="text" id="newMfiName" placeholder="MFI名称" style="flex:1;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+            <input type="text" id="newMfiBranch" placeholder="支行" style="width:80px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+            <button class="btn btn-primary btn-sm" onclick="addMfiUI()">新增</button>
+          </div>
+        </div>
+      </div>
+      <div class="dash-grid" style="margin-bottom:24px;">
+        <div class="dash-table-box">
+          <h4>支付汇率</h4>
+          <div style="max-height:150px;overflow-y:auto;">${rates.map(function(r){return '<div style="padding:3px 0;font-size:13px;">$'+r.amount.toFixed(2)+' → '+r.days+' 天</div>';}).join('')}</div>
+        </div>
+        <div class="dash-table-box">
+          <h4>用户管理 (${users.length})</h4>
+          <div style="max-height:120px;overflow-y:auto;">${users.map(function(u){return '<div style="padding:3px 0;font-size:13px;">'+escapeHtml(u.username)+' <span style="color:#94a3b8;font-size:11px;">('+u.role+')</span></div>';}).join('')}</div>
+          <div style="margin-top:8px;display:flex;gap:4px;">
+            <input type="text" id="newUsername" placeholder="用户名" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+            <input type="password" id="newUserPass" placeholder="密码" style="width:90px;padding:4px 6px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+            <select id="newUserRole" style="padding:4px;font-size:11px;border:1px solid var(--border);border-radius:4px;">
+              <option value="ops_staff">运营专员</option><option value="ops_manager">运营主管</option>
+              <option value="tech_support">技术支持</option><option value="readonly">只读</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="addUserUI()">新增</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function addMfiUI() {
+  var name = document.getElementById('newMfiName').value.trim();
+  var branch = document.getElementById('newMfiBranch').value.trim();
+  if (!name) { showToast('请输入MFI名称'); return; }
+  await fetch('/api/mfis', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,branch:branch})});
+  showToast('MFI 已添加'); showSettings();
+}
+
+async function addUserUI() {
+  var u = document.getElementById('newUsername').value.trim();
+  var p = document.getElementById('newUserPass').value.trim();
+  var r = document.getElementById('newUserRole').value;
+  if (!u||!p) { showToast('请输入用户名和密码'); return; }
+  await fetch('/api/settings/users', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p,role:r})});
+  showToast('用户已添加'); showSettings();
 }
 </script>
 {% endblock %}

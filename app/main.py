@@ -18,6 +18,7 @@ from app.routers.contracts import router as contracts_router
 from app.routers.tokens import router as tokens_router
 from app.routers.alerts import router as alerts_router
 from app.routers.reports import router as reports_router
+from app.routers.settings import router as settings_router
 
 
 @asynccontextmanager
@@ -88,6 +89,20 @@ async def lifespan(app: FastAPI):
                 action VARCHAR(50) NOT NULL, operator VARCHAR(100),
                 note TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             )""")))
+        # Phase 8 — 用户 + SMS模板
+        await conn.run_sync(lambda c: c.execute(text(
+            """CREATE TABLE IF NOT EXISTS users (
+                id VARCHAR(8) PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL, role VARCHAR(30) DEFAULT 'readonly',
+                status VARCHAR(20) DEFAULT 'active',
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )""")))
+        await conn.run_sync(lambda c: c.execute(text(
+            """CREATE TABLE IF NOT EXISTS sms_templates (
+                id VARCHAR(8) PRIMARY KEY, code VARCHAR(30) NOT NULL,
+                language VARCHAR(5) DEFAULT 'zh', content TEXT NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )""")))
     await init_redis()
     init_fernet()
     # 种子支付汇率
@@ -124,6 +139,7 @@ app.include_router(contracts_router)
 app.include_router(tokens_router)
 app.include_router(alerts_router)
 app.include_router(reports_router)
+app.include_router(settings_router)
 
 
 @app.get("/dashboard")

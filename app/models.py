@@ -57,6 +57,29 @@ class Mfi(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
 
 
+class User(Base):
+    """系统用户（RBAC）"""
+    __tablename__ = "users"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("U"))
+    username = Column(String(50), nullable=False, unique=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(String(30), default="readonly")  # super_admin/ops_manager/ops_staff/tech_support/readonly
+    status = Column(String(20), default="active")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+
+
+class SmsTemplate(Base):
+    """SMS 模板"""
+    __tablename__ = "sms_templates"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("ST"))
+    code = Column(String(30), nullable=False)  # token_issued/payment_reminder/overdue_warning/lock_notice
+    language = Column(String(5), default="zh")  # km/en/zh
+    content = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+
+
 class Token(Base):
     __tablename__ = "tokens"
 
