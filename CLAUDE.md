@@ -1,354 +1,92 @@
 # 太阳能即付即用平台原型
 
-## 项目概述
-本项目是柬埔寨太阳能发电系统PAYGO（Pay-As-You-Go）平台的原型系统。通过与MFI（小额信贷机构）合作，客户可以分期付款购买太阳能系统，每次还款后系统生成激活Token延长设备使用期限。
+Python FastAPI + Jinja2 + PostgreSQL 15 + Redis 8。200 tests，16 张表，8 个导航 Tab。
 
-## 业务背景
-- 柬埔寨商业电价高达0.135-0.185美元/千瓦时
-- 太阳能发电成本仅约0.03美元/千瓦时，成本优势超过75%
-- 目标系统规模：6kW-30kW分布式太阳能系统
-- 目标客户：别墅、商铺、中小型工厂、大型农场
-- 合作MFI：LOLC Cambodia、PRASAC、ACLEDA等
-- 支付方式：通过Bakong系统（柬埔寨国家银行数字支付平台）
+## 常用命令
 
-## 当前原型范围
-
-当前为**第二阶段原型（全部 10 个 Phase 已完成）**，累计 **200 个测试**，**16 张数据表**，**8 个导航 Tab**。
-
-### Phase 0：安全基础升级 ✅ 已完成 2026-05-20
-- 密码 bcrypt 哈希存储（替换明文比较）
-- 设备密钥 Fernet 加密存储（`secret_key_encrypted` 列，启动时自动迁移明文→密文）
-- API 限流中间件（Redis 滑动窗口，100次/min 通用，10次/min 登录）
-- 请求日志中间件（方法/路径/状态码/耗时/IP）
-- 登录失败锁定（5次失败锁定15分钟）
-- 新增文件：`app/security.py`, `app/middleware.py`
-- 新增环境变量：`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `SECRET_KEY_MASTER_KEY`, `RATE_LIMIT_PER_MINUTE`, `LOGIN_RATE_LIMIT_PER_MINUTE`, `LOGIN_MAX_FAILURES`, `LOGIN_LOCKOUT_MINUTES`
-
-### Phase 1：合同管理补完（原 M7 收尾） ✅ 已完成 2026-05-20
-- 按期还款标记 → 自动生成 ADD_TIME Token → 创建 RepaymentRecord
-- 逾期自动检测（check_overdue_schedules：到期未付 → 标记 overdue → 合同联动 → 设备锁定）
-- 提前结清（生成 DISABLE_PAYG Token → 永久解锁 → 合同 closed）
-- 还款进度可视化（合同详情页绿色进度条 + 期数快捷还款按钮）
-- 新增表：`repayment_records`
-- 新增字段：`tokens.contract_id`
-- API：`POST /api/contracts/{cid}/pay`, `POST /api/contracts/check-overdue`, `POST /api/contracts/{cid}/settle`
-
-## 原型迭代路线图（全部完成）
-
-详细升级计划见 `docs/项目文档/平台升级迭代计划.md`。按业务闭环深度分 9 个阶段（Phase 0-8），每阶段完成后必须同步更新本文件和升级计划文件。
-
-### Phase 0：安全基础升级 ✅ 已完成 2026-05-20（原 M5 安全升级提前执行）
-- bcrypt 密码哈希、设备密钥 Fernet 加密存储、API 限流、请求日志、登录失败锁定
-- 新增：app/security.py, app/middleware.py，157 tests
-
-### Phase 1：合同管理补完 ✅ 已完成 2026-05-20（原 M7 收尾）
-- 按期还款→Token 生成、逾期自动检测→设备锁定、提前结清→永久解锁、还款进度条
-- 新增：repayment_records 表，165 tests
-
-### Phase 2：Token 管理独立模块 ✅ 已完成 2026-05-20
-- **导航 tab**：新增「Token 管理」（第 4 个 tab）
-- **核心能力**：Token 列表（按客户/状态筛选+分页）、Token 统计卡片（总数/今日/本月/已作废）、Token 详情（含客户名/关联合同/审计字段）、手动补发（Counter+1 新 Token，原 Token → SUPERSEDED）、Token 作废（标记 SUPERSEDED + 操作人 + 原因）
-- **新增文件**：`app/routers/tokens.py`, `tests/test_tokens_api.py`
-- **Token 模型**：新增 status/superseded_by/voided_at/voided_by/void_reason/ip_address/user_agent（7 字段）
-- 178 tests
-
-### Phase 3：客户 360 视图与 MFI 管理 ✅ 已完成 2026-05-20
-- **导航 tab**：增强「客户管理」（搜索筛选 + 360 聚合视图 + 标签管理）
-- 客户扩展字段：地址/GPS/身份证/MFI 关联/标签（JSON）
-- 客户 360 聚合视图：合同卡片（可点击跳转）+ Token 时间线（15条）+ MFI 名称
-- 标签管理：添加/删除标签（VIP/高风险/投诉频繁/新客户）
-- 搜索筛选：姓名/电话实时搜索（300ms debounce）
-- MFI 机构管理：CRUD API（LOLC/PRASAC/ACLEDA）
-- 新增模型：`Mfi`, 新增 6 个 Customer 字段
-- 188 tests
-
-### Phase 4：告警中心 ✅ 已完成 2026-05-20
-- **导航 tab**：新增「告警中心」（第 5 个 tab）
-- 告警规则：3 条种子规则（ALM-001 逾期未还款 P0 / ALM-002 设备通信失联 P1 / ALM-003 Token验证异常 P2）
-- 告警列表：P0(红)/P1(黄)/P2(蓝) 颜色区分，状态图标，按级别+时间排序
-- 处理工作流：pending → claimed → processing → closed
-- 操作按钮：认领/标记解决/升级（认领非 pending 不可/升级 P2→P1→P0）
-- 操作日志时间线（AlertLog 表记录每次 action）
-- 统计卡片：总数/今日/待处理/已关闭
-- 新增：Alert/AlertRule/AlertLog 3 模型，app/routers/alerts.py
-- 198 tests
-
-### Phase 5：仪表盘增强 ✅ 已完成 2026-05-20
-- **导航 tab**：增强「运营仪表盘」（ECharts 驾驶舱 + MFI 筛选 + 时间范围）
-- 8 KPI 卡片：总客户/活跃设备/本月收入/逾期锁定/本月Token/执行中合同/待处理告警/逾期率
-- ECharts 图表：收入趋势(折线)/Token趋势(柱状)/告警级别(饼图)/告警趋势(折线)/设备状态(饼图)
-- 时间筛选：7天/30天/90天 按钮组
-- MFI 全局筛选 dropdown
-- KPI 下钻：点击卡片跳转对应模块
-- Redis 缓存（TTL 5min）
-- 200 tests
-
-### Phase 6：设备地图 ✅ 已完成 2026-05-20
-- **导航 tab**：新增「设备地图」（第 6 个 tab）
-- Leaflet.js + OpenStreetMap 柬埔寨全境地图
-- 颜色标注：绿(活跃)/红(逾期)/黄(永久解锁) circleMarker
-- 图层切换：全部/活跃/逾期锁定/永久解锁 按钮
-- 搜索定位：序列号/客户名搜索 + 自动聚焦 zoom 14
-- API：GET /api/devices/geo（依赖 Phase 3 GPS 字段）
-- 200 tests
-
-### Phase 7：报表中心 ✅ 已完成 2026-05-20
-- **导航 tab**：新增「报表中心」（第 7 个 tab）
-- 报表汇总：日期范围查询（新增客户/收入/Token/合同/告警/逾期率）
-- ESG 碳减排：CO₂ 减排量（吨）= Token天数 × 20kWh/天 × 0.0007 tCO₂/kWh
-- CSV 导出：StreamingResponse 下载
-- 新增：app/routers/reports.py
-
-### Phase 8：系统设置 ✅ 已完成 2026-05-20
-- **导航 tab**：新增「系统设置」（第 8 个 tab，最后一个）
-- 系统健康检查：DB + Redis 连通性
-- 支付汇率管理：金额→天数映射 UI
-- MFI 机构管理：增删查 UI
-- 用户管理：RBAC 角色（super_admin/ops_manager/ops_staff/tech_support/readonly）
-- 新增模型：User, SmsTemplate（16 张表总计）
-- 新增：app/routers/settings.py
-
-### Phase 9：JWT 认证 + API 版本化（云部署准备）✅ 已完成 2026-05-20
-- **JWT 认证**：双模式认证（JWT Bearer Token + JWT Cookie + Session Cookie 兼容）
-- **Token 生成**：`create_access_token`（15分钟）/ `create_refresh_token`（7天）
-- **认证增强**：`_check_auth` 支持 Bearer token / access_token cookie / session cookie 三通道
-- **登出**：同时清除 session + access_token + refresh_token cookie
-- **API 版本化**：`/api/v1/health` 健康检查端点，用于云部署探活
-- **生产迁移**：建议逐步迁移到 `/api/v1/` 前缀，`/api/` 保留兼容过渡期
-- **新增依赖**：python-jose[cryptography]>=3.3.0
-- 200 tests
-
-### 设备控制器模拟器
-
-平台内置 **Web 版 PAYGO 控制器模拟器**，可在桌面或安卓手机浏览器直接访问，模拟 Dongle 硬件行为：
-
-- **访问地址**：`http://<host>:8000/controller`（导航栏「📱 设备模拟器」入口）
-- **功能**：
-  - 下拉选择平台已注册设备 → 显示密钥/状态/Count/继电器
-  - 输入 9 位 OpenPAYGO Token → 服务端解码验证
-  - DISABLE_PAYG Token → 永久解锁，ADD_TIME Token → 延长天数
-  - 验证成功后返回剩余天数，继电器状态实时更新
-  - Token 防重放：已使用 Token 返回「Token 已使用（防重放）」
-- **技术实现**：`app/routers/controller.py`（POST /api/controller/validate-token）+ `templates/controller.html`（深色终端风格 UI）
-- **原型阶段**：Token 在服务端用 OpenPAYGO 库验证（与真实 Dongle 本地验证等价），设备状态变更写回 PostgreSQL
-
-还有**桌面终端模拟器**：`controller/controller.py`，在终端运行，直接连接 PostgreSQL 本地解码 Token，适合开发调试。
-
-### 全部 8 个 Tab 导航结构
-```
-运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置
-```
-
-### 原型阶段暂不做（不可实施清单）
-
-以下功能即使部署到云也无法真实运行，原因如下：
-
-| 功能 | 原因 | 原型替代方案 |
-|:---|:---|:---|
-| Bakong KHQR 支付 | 需柬埔寨国家银行 API 权限 + HMAC 签名密钥 | 页面"模拟支付"按钮 → 手动确认到账 |
-| SMS SMPP 网关 | 需 Cellcard/Smart 运营商 SMPP 企业账号 | 弹窗展示短信内容 + DB 记录 |
-| MQTT/EMQX 设备通信 | 需物理硬件控制板（ESP32/Dongle）配合 | DB 模拟设备状态 + 手动录入遥测 |
-| MFI CBS 实时同步 | 需 MFI 核心银行系统 API + VPN 专线 | 管理后台手动录入客户/合同 |
-| AWS KMS/Vault 密钥管理 | 需 AWS 账号 + Vault 集群 | Fernet 本地加密（环境变量管理主密钥） |
-| TLS 1.3/mTLS | 需域名 + SSL 证书 + CA 基础设施 | HTTP 明文（本地开发/内网部署） |
-| Flutter Mobile App | 独立项目，需 Android/iOS 开发 | Web 端 Jinja2 模板（响应式） |
-| Prometheus/Grafana/OpenSearch | 需 K8s 集群 + 持久化存储 | Python logging 模块 + 结构化日志 |
-| EKS/K8s/Terraform | 需 AWS 账号 + 运维基础设施 | Docker Compose 本地部署 |
-
-### 云部署就绪项 ✅
-- JWT 认证（双模式：Bearer Token + Cookie，兼容 Session）
-- API 限流（Redis 滑动窗口）
-- 密码 bcrypt 哈希 + 设备密钥 Fernet 加密
-- 健康检查端点 `/api/v1/health`
-- 完整 RBAC 用户模型（16 张表，200 tests）
-- 所有外部依赖通过环境变量配置（12+ 变量）
-
-## 技术栈
-- 后端框架：Python FastAPI
-- 前端：Jinja2 模板 + 纯 CSS（绿色主题 #059669）
-- 数据库：PostgreSQL 15（SQLAlchemy 2.0 async + asyncpg 驱动）
-- 缓存：Redis 8（session 管理 + API 响应缓存 + Token 防重放）
-- Token 生成：OpenPAYGO 标准 >=0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
-- 安全：bcrypt（密码哈希）+ Fernet（设备密钥对称加密）+ Redis 滑动窗口限流
-- ORM：SQLAlchemy 2.0 async，**16 张表**（+users/sms_templates）
-- 测试：pytest-asyncio，**200 个测试**，真实测试数据库隔离
-
-## Superpowers 框架配置
-- 强制TDD：所有功能必须先写测试再写实现
-- 计划先行：每个 Phase 前编写实施计划到 `docs/superpowers/plans/`
-- 子代理开发：复杂任务使用 Subagent-Driven Development 执行
-- 双重审查：规格合规审查 + 代码质量审查
-- 验证前完成：所有功能必须通过测试验证（`pytest tests/ -v`）
-- 频繁提交：每个小步骤完成后提交代码
-- **每个 Phase 完成后必须同步更新**：
-  1. `docs/项目文档/平台升级迭代计划.md` — 标注完成状态 ✅ + 实际结果
-  2. `CLAUDE.md` — 更新原型范围、测试数、表数、路线图、目录结构
-  3. `README.md` — 更新操作手册（新增Tab/API/功能说明）
-
-## 项目目录结构
-```
-paygo-platform/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI 主应用入口（lifespan 管理连接池 + 中间件注册 + 数据迁移）
-│   ├── settings.py          # 数据库/Redis/安全/JWT/限流 配置（环境变量覆盖）
-│   ├── models.py            # SQLAlchemy ORM 模型（16 张表）
-│   ├── database.py          # async engine + session 工厂 + Depends 注入
-│   ├── redis.py             # Redis 客户端 + session/缓存/防重放
-│   ├── store.py             # async 数据访问层（CRUD + 还款/逾期/结清/告警/360/标签/批量Token）
-│   ├── security.py          # bcrypt 密码哈希 + Fernet 密钥加解密 + JWT
-│   ├── middleware.py         # 限流中间件 + 请求日志中间件
-│   └── routers/
-│       ├── __init__.py
-│       ├── auth.py          # 登录/登出（bcrypt 验证 + JWT + session + 登录锁定）
-│       ├── customers.py     # 客户CRUD + 模拟支付 + 360视图 + 设备地图数据
-│       ├── config.py        # 支付汇率配置 API
-│       ├── contracts.py     # 合同/贷款产品 CRUD + 还款/逾期检测/结清
-│       ├── tokens.py        # Token 管理（列表/详情/补发/作废/批量生成）
-│       ├── alerts.py        # 告警中心（规则/列表/详情/认领/解决/升级）
-│       ├── dashboard.py     # 仪表盘统计（基础 + 增强）
-│       ├── reports.py       # 报表中心（汇总/ESG/CSV导出）
-│       ├── settings.py      # 系统设置（健康检查/汇率/模板/用户）
-├── controller/
-│   ├── controller.py        # 终端 UI（9位Token输入/密钥绑定/count显示）
-│   └── state_manager.py     # 状态机 + PostgreSQL 持久化
-├── static/
-│   ├── __init__.py
-│   ├── style.css            # 全局样式（绿色主题 #059669）
-│   └── logo.png             # 平台 Logo
-├── templates/
-│   ├── base.html            # 布局框架
-│   ├── login.html           # 登录页
-│   └── dashboard.html       # 主界面（左列表+右详情）
-├── tests/
-│   ├── conftest.py          # 全局 fixture + openpaygo 补丁 + Fernet/Redis 初始化 + 状态清理
-│   ├── test_models.py       # ORM 模型 (8 tests)
-│   ├── test_database.py     # 数据库连接池 (3 tests)
-│   ├── test_redis_client.py # Redis 客户端 (10 tests)
-│   ├── test_security.py     # 安全模块 (10 tests, Phase 0)
-│   ├── test_middleware.py   # 限流+日志中间件 (2 tests, Phase 0)
-│   ├── test_store.py        # 数据访问层 (36 tests, 含密钥加密+还款流+360+Token+告警)
-│   ├── test_auth.py         # 认证 (8 tests, 含登录锁定)
-│   ├── test_customers_api.py# 客户API (26 tests)
-│   ├── test_contract_models.py  # 合同+还款记录模型 (7 tests, Phase 1)
-│   ├── test_contract_store.py   # 合同 store 层 (21 tests, Phase 1)
-│   ├── test_contracts_api.py    # 合同 API (9 tests, Phase 1)
-│   ├── test_dashboard_api.py    # 仪表盘 API (4 tests)
-│   ├── test_tokens_api.py   # Token 管理 API (6 tests, Phase 2)
-│   ├── test_alerts_api.py   # 告警中心 API (5 tests, Phase 4)
-│   ├── test_alert_store.py  # 告警 store 层 (5 tests, Phase 4)
-│   ├── test_state_manager.py# 状态机 (19 tests)
-│   ├── test_config_api.py   # 支付汇率 (2 tests)
-│   ├── test_controller_integration.py  # 控制器集成 (4 tests)
-│   ├── test_integration.py  # 端到端集成 (6 tests)
-│   └── test_upgrade.py      # 五场景 MFI 演示 (9 tests)
-├── docs/
-│   ├── debug-controller.md
-│   ├── controller-redeploy.md
-│   └── superpowers/
-│       ├── specs/           # 设计文档
-│       └── plans/           # 实施计划（Phase 0-8）
-├── scripts/
-│   └── seed_demo_data.py    # 演示数据初始化（4客户+GPS+MFI+标签）
-├── requirements.txt
-├── README.md                # 运营操作手册（35步验证清单）
-├── CLAUDE.md                # 本文件（项目上下文+规范）
-├── docs/
-│   ├── 项目文档/
-│   │   ├── 平台升级迭代计划.md     # 详细升级计划（10 Phase全记录）
-│   │   ├── 平台演示流程手册.md     # 演示流程手册（4角色+25步+截图）
-│   │   ├── 平台需求规格说明书_PRD_V1.0.md
-│   │   ├── 系统架构设计说明书_V1.0.md
-│   │   └── 平台运营级功能需求分析与升级计划书.md
-│   ├── screenshots/               # 演示截图
-│   └── superpowers/
-│       ├── specs/                 # 设计文档
-│       └── plans/                 # 实施计划（Phase 0-8）
-├── AGENTS.md                # 代理角色定义
-└── .superpowers/            # Superpowers 框架配置
-```
-
-## 开发规范
-- 强制TDD：每个功能必须先有失败的测试，再写实现代码
-- 计划先行：每个 Phase 前编写实施计划到 `docs/superpowers/plans/YYYY-MM-DD-<name>.md`
-- 子代理开发：复杂任务使用 Subagent-Driven Development 执行
-- 双重审查：规格合规审查 + 代码质量审查
-- 验证前完成：所有功能必须通过测试验证（`pytest tests/ -v`）
-- 频繁提交：每个小步骤完成后提交代码
-- 代码注释使用中文（部分英文标签）
-- 所有API接口使用 `/api/` 前缀
-- 认证方式：单一管理员账号 + bcrypt 密码验证 + Redis session cookie + 登录锁定
-- **每个 Phase 完成后必须同步更新两个文件**：
-  1. `PAYGO平台升级迭代计划.md` — 标注 Phase 完成状态 ✅ + 填写实际结果（测试数、文件列表、关键差异）
-  2. `CLAUDE.md` — 更新原型范围、测试数、表数、迭代路线图状态、目录结构
-
-## 启动命令
 ```bash
-# 前置依赖：确保 PostgreSQL 15 和 Redis 8 已运行
-# PostgreSQL 数据库：paygo_platform，用户：paygo_user
-# Redis：localhost:6379
-
-# 开发环境启动
+# 开发启动（需 PostgreSQL + Redis 已运行）
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 加载演示数据（首次使用）
+# 加载演示数据（4 客户 + 3 合同 + GPS + MFI）
 PYTHONPATH="." python scripts/seed_demo_data.py
 
-# 运行所有测试（200 个）
+# 运行全部测试
 pytest tests/ -v
 
-# 运行单个测试文件
+# 运行单个模块
 pytest tests/test_store.py -v
 
-# 按模块运行
-pytest tests/test_models.py -v          # ORM 模型 (8 tests)
-pytest tests/test_database.py -v        # 连接池 (3 tests)
-pytest tests/test_redis_client.py -v    # Redis (10 tests)
-pytest tests/test_security.py -v        # 安全模块 (10 tests, Phase 0)
-pytest tests/test_middleware.py -v      # 中间件 (2 tests, Phase 0)
-pytest tests/test_store.py -v           # 数据访问层 (23 tests)
-pytest tests/test_auth.py -v            # 认证 (8 tests)
-pytest tests/test_customers_api.py -v   # 客户API (22 tests)
-pytest tests/test_contract_models.py -v # 合同模型 (7 tests, Phase 1)
-pytest tests/test_contract_store.py -v  # 合同 store (21 tests, Phase 1)
-pytest tests/test_contracts_api.py -v   # 合同 API (9 tests, Phase 1)
-pytest tests/test_dashboard_api.py -v   # 仪表盘 API (2 tests)
-pytest tests/test_state_manager.py -v   # 状态机 (19 tests)
-pytest tests/test_config_api.py -v      # 支付汇率 (2 tests)
-pytest tests/test_integration.py -v     # 集成 (6 tests)
-pytest tests/test_upgrade.py -v         # 五场景 (9 tests)
-
-# 控制器终端（需先激活 venv）
-source venv/bin/activate && cd controller && python controller.py
-
-# 访问API文档
-http://localhost:8000/docs
-
-# 访问运营后台
-http://localhost:8000/dashboard
+# Docker Compose 部署
+docker compose up -d --build
 ```
 
-### 环境变量
+访问：http://localhost:8000/dashboard · 登录：`admin` / `admin123` · API 文档：http://localhost:8000/docs
 
-所有连接配置支持环境变量覆盖：
+## 架构摘要
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `DATABASE_URL` | `postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform` | 数据库连接串 |
-| `TEST_DATABASE_URL` | 同上但数据库为 `paygo_platform_test` | 测试数据库 |
-| `REDIS_URL` | `redis://localhost:6379/0` | Redis 连接串 |
-| `DB_POOL_SIZE` | `10` | 连接池常驻连接数 |
-| `DB_MAX_OVERFLOW` | `20` | 连接池峰值溢出数 |
-| `CACHE_TTL_API` | `60` | API 缓存 TTL（秒） |
-| `SESSION_TTL` | `1800` | 登录 Session TTL（30分钟） |
-| `ANTIREPLAY_TTL` | `604800` | Token 防重放 TTL（7天） |
-| `ADMIN_USERNAME` | `admin` | 管理员用户名 |
-| `ADMIN_PASSWORD_HASH` | (空=首次启动使用默认密码) | bcrypt 密码哈希 |
-| `SECRET_KEY_MASTER_KEY` | (空=自动生成临时密钥) | Fernet 加密主密钥（base64） |
-| `RATE_LIMIT_PER_MINUTE` | `100` | API 限流（次/分钟/IP） |
-| `LOGIN_RATE_LIMIT_PER_MINUTE` | `10` | 登录接口限流（次/分钟/IP） |
-| `LOGIN_MAX_FAILURES` | `5` | 登录失败锁定阈值 |
-| `LOGIN_LOCKOUT_MINUTES` | `15` | 登录锁定时间（分钟） |
-| `JWT_SECRET_KEY` | (内置默认) | JWT 签名密钥（生产必须覆盖） |
-| `JWT_ACCESS_TOKEN_EXPIRE` | `15` | JWT Access Token 有效期（分钟） |
-| `JWT_REFRESH_TOKEN_EXPIRE` | `7` | JWT Refresh Token 有效期（天） |
+```
+router/  →  store.py  →  models.py  →  PostgreSQL 15
+   ↓           ↓
+  Jinja2     Redis 8 (session / 缓存 / 限流 / 防重放)
+```
+
+- **routers/** — 每个模块一个文件，通过 `_check_auth` 认证（JWT Bearer → JWT Cookie → Session Cookie 三通道）
+- **store.py** — 所有数据访问层，async SQLAlchemy 2.0。CRUD + 等额本息计算 + 还款标记 + 逾期检测 + 告警 + 360视图 + 标签 + Token 管理
+- **models.py** — 16 张表，首次启动 `lifespan` 自动 `create_all` + 逐个 ALTER TABLE 迁移
+- **security.py** — bcrypt 密码哈希 + Fernet 设备密钥加密（密钥持久化到 `.env`）+ JWT HS256
+- **middleware.py** — RateLimiterMiddleware（Redis 滑动窗口 100/min）+ RequestLoggingMiddleware
+- **templates/** — `base.html` 布局 + `dashboard.html` SPA 全部 8 模块（含浮动控制器面板）
+
+路由→文件映射：`/api/customers` → `routers/customers.py`，`/api/tokens` → `routers/tokens.py`，以此类推。
+
+## 开发规范
+
+- **强制 TDD**：先写失败测试再写实现。测试数据库 `paygo_platform_test` 独立隔离
+- **计划先行**：每个 Phase 前写实施计划到 `docs/superpowers/plans/`
+- **子代理执行**：用 Subagent-Driven Development 按 task 逐个实现+审查
+- **API 前缀**：所有接口 `/api/` 前缀，健康检查 `/api/v1/health`
+- **认证**：`_check_auth()` 三通道（Bearer > JWT Cookie > Session），复用于所有 router
+- **中文注释**：代码注释用中文，提交信息用中文简述
+- **Fernet 密钥一致性**：`SECRET_KEY_MASTER_KEY` 存于 `.env`，首次启动自动生成并持久化。种子数据和服务器必须使用同一密钥
+
+## 关键环境变量
+
+| 变量 | 说明 |
+|:---|:---|
+| `DATABASE_URL` | PostgreSQL 连接串（含 `+asyncpg` 驱动） |
+| `REDIS_URL` | Redis 连接串 |
+| `SECRET_KEY_MASTER_KEY` | Fernet 设备密钥加密主密钥，**必须跨进程一致** |
+| `JWT_SECRET_KEY` | JWT HS256 签名密钥 |
+| `ADMIN_PASSWORD_HASH` | bcrypt 密码哈希（空则默认密码 `admin123`） |
+| `RATE_LIMIT_PER_MINUTE` | API 限流阈值，默认 100 |
+
+全部变量见 `app/settings.py`。
+
+## 测试策略
+
+- 所有测试独立于开发数据库，使用 `paygo_platform_test`
+- `conftest.py` 管理 session 级 Redis/Fernet 初始化 + 模块间 Redis 状态清理
+- 按模块对应：`test_store.py` → `app/store.py`，`test_contracts_api.py` → `routers/contracts.py`
+- 新功能 = 新测试文件（store 测试用函数级 test DB，API 测试用 httpx ASGITransport）
+
+## 约束与边界
+
+**原型模拟（不可真实对接）**：
+- 支付：页面按钮模拟，不接 Bakong API · SMS：弹窗展示，不接 SMPP 网关
+- 设备通信：DB 模拟状态，不接 MQTT/EMQX · MFI 同步：手动录入，不接 CBS
+
+**安全底线（即使原型也必须实现）**：bcrypt 密码、Fernet 密钥加密、Redis 限流、登录锁定。
+
+**Flutter App / AWS K8s / Terraform 不在此原型范围。**
+
+## 相关文档
+
+| 文档 | 位置 |
+|:---|:---|
+| 升级迭代计划（10 Phase 全记录） | `docs/项目文档/平台升级迭代计划.md` |
+| 演示流程手册（4 角色 × 25 步 × 截图） | `docs/项目文档/平台演示流程手册.md` |
+| 需求规格说明书 PRD | `docs/项目文档/平台需求规格说明书_PRD_V1.0.md` |
+| 系统架构设计说明书 | `docs/项目文档/系统架构设计说明书_V1.0.md` |
+| 云端部署指导手册 | `docs/项目文档/云部署指导手册.md` |
+| 运营操作手册 + API 速查 | `README.md` |
