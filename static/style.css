@@ -606,3 +606,13 @@ body {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .dash-grid { grid-template-columns: 1fr; }
 }
+
+/* ── 合同管理 ── */
+.contract-status-draft { color: #64748b; }
+.contract-status-active { color: #059669; }
+.contract-status-overdue { color: #d97706; }
+.contract-status-closed { color: #16a34a; }
+.contract-status-recovered { color: #dc2626; }
+.schedule-paid { color: #059669; }
+.schedule-overdue { color: #dc2626; font-weight: 600; }
+.schedule-pending { color: #94a3b8; }

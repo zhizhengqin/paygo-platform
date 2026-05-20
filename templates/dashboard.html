@@ -142,6 +142,17 @@ function switchTab(tab) {
   } else if (tab === 'customers') {
     layout.classList.remove('sidebar-hidden');
     selectedCustomerId = null;
+    // 还原侧边栏为客户列表模式
+    document.querySelector('.sidebar-header h3').textContent = '客户列表';
+    document.querySelector('.sidebar-header h3').onclick = function() { showDashboard(); };
+    const keygenSection = document.querySelector('.keygen-section');
+    if (keygenSection) {
+      keygenSection.innerHTML = `
+        <div class="keygen-title">密钥生成器</div>
+        <button class="keygen-btn" onclick="generateKeys()">生成 5 个设备密钥</button>
+        <div class="keygen-list" id="keygenList"></div>
+      `;
+    }
     loadCustomers();
     document.getElementById('detailPanel').innerHTML = `
       <div class="empty-state">
@@ -149,6 +160,11 @@ function switchTab(tab) {
         <p>选择左侧客户查看详情</p>
       </div>
     `;
+  } else if (tab === 'contracts') {
+    layout.classList.remove('sidebar-hidden');
+    selectedCustomerId = null;
+    selectedContractId = null;
+    loadContracts();
   }
 }
 
@@ -511,5 +527,201 @@ function closeModal(id) {
 
 showDashboard();
 document.querySelector('.main-layout').classList.add('sidebar-hidden');
+
+// ---- 合同管理 ----
+let selectedContractId = null;
+
+async function loadContracts() {
+  const resp = await fetch('/api/contracts');
+  const contracts = await resp.json();
+  const container = document.getElementById('customerItems');
+  document.querySelector('.sidebar-header h3').textContent = '合同列表';
+  document.querySelector('.sidebar-header h3').onclick = null;
+  document.getElementById('customerCount').textContent = contracts.length;
+
+  const STATUS_DOT_C = { draft:'📝', approved:'🔵', active:'🟢', overdue:'🟡', closed:'✅', recovered:'🔴' };
+
+  container.innerHTML = contracts.map(c => `
+    <div class="customer-item ${c.id === selectedContractId ? 'active' : ''}"
+         onclick="selectContract('${c.id}')">
+      <div class="name">${STATUS_DOT_C[c.status] || '⚪'} ${c.contract_no}</div>
+      <div class="meta">${escapeHtml(c.customer_name || '—')} · ${c.status}</div>
+    </div>
+  `).join('');
+
+  const keygenSection = document.querySelector('.keygen-section');
+  if (keygenSection) {
+    keygenSection.innerHTML = `
+      <div class="keygen-title">贷款产品</div>
+      <button class="keygen-btn" onclick="showLoanProductModal()">⚙ 贷款产品配置</button>
+      <button class="keygen-btn" style="margin-top:6px;" onclick="showNewContractModal()">+ 新合同</button>
+    `;
+  }
+
+  if (!selectedContractId) {
+    document.getElementById('detailPanel').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>选择左侧合同查看详情</p>
+      </div>
+    `;
+  }
+}
+
+async function selectContract(cid) {
+  selectedContractId = cid;
+  await loadContracts();
+  const resp = await fetch('/api/contracts/' + encodeURIComponent(cid));
+  const c = await resp.json();
+
+  const STATUS_LABEL = {
+    draft: '草稿', approved: '已审批', active: '执行中',
+    overdue: '逾期', closed: '已结清', recovered: '已回收',
+  };
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="detail-card">
+      <div class="detail-header">
+        <div class="detail-avatar">${c.contract_no ? c.contract_no[3] : 'C'}</div>
+        <div>
+          <h2>${escapeHtml(c.contract_no)}</h2>
+          <span class="status-badge">${STATUS_LABEL[c.status] || c.status}</span>
+        </div>
+      </div>
+      <div class="detail-body">
+        <div class="detail-row"><span class="label">客户</span><span class="value">${escapeHtml(c.customer_name || '—')}</span></div>
+        <div class="detail-row"><span class="label">贷款金额</span><span class="value">$${c.loan_amount.toFixed(2)}</span></div>
+        <div class="detail-row"><span class="label">月供</span><span class="value">$${c.monthly_payment.toFixed(2)}</span></div>
+        <div class="detail-row"><span class="label">首付</span><span class="value">$${c.down_payment.toFixed(2)}</span></div>
+        <div class="detail-row"><span class="label">合同期限</span><span class="value">${c.start_date || '—'} ~ ${c.end_date || '—'}</span></div>
+        <div class="detail-row"><span class="label">剩余天数</span><span class="value">${c.remaining_days || 0} 天</span></div>
+      </div>
+      <div class="detail-section">
+        <h4>操作</h4>
+        <div class="btn-group">
+          ${c.status === 'draft' ? '<button class="btn btn-primary btn-sm" onclick="approveContract(\'' + c.id + '\')">审批通过</button>' : ''}
+          ${c.status === 'active' ? '<button class="btn btn-warning btn-sm" onclick="markOverdue(\'' + c.id + '\')">标记逾期</button>' : ''}
+          ${c.status === 'overdue' ? '<button class="btn btn-primary btn-sm" onclick="markActive(\'' + c.id + '\')">恢复活跃</button>' : ''}
+          ${(c.status === 'active' || c.status === 'overdue') ? '<button class="btn btn-danger btn-sm" onclick="closeContract(\'' + c.id + '\')">结清/回收</button>' : ''}
+        </div>
+      </div>
+      ${c.schedules && c.schedules.length > 0 ? `
+      <div class="detail-section">
+        <h4>还款计划表</h4>
+        <div style="overflow-x:auto;">
+          <table class="tx-table">
+            <thead><tr><th>期数</th><th>应还日</th><th>月供</th><th>本金</th><th>利息</th><th>剩余本金</th><th>状态</th></tr></thead>
+            <tbody>
+              ${c.schedules.map(s => '<tr><td>' + s.period_no + '</td><td>' + s.due_date + '</td><td>$' + s.total.toFixed(2) + '</td><td>$' + s.principal.toFixed(2) + '</td><td>$' + s.interest.toFixed(2) + '</td><td>$' + s.balance.toFixed(2) + '</td><td>' + (s.status === 'paid' ? '✅' : s.status === 'overdue' ? '🔴' : '⏳') + '</td></tr>').join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+async function approveContract(cid) {
+  await fetch('/api/contracts/' + encodeURIComponent(cid) + '/approve', { method: 'PUT' });
+  selectContract(cid);
+  showToast('合同已审批通过，还款计划已生成');
+}
+
+async function markOverdue(cid) {
+  await fetch('/api/contracts/' + encodeURIComponent(cid) + '/status', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'overdue'})
+  });
+  selectContract(cid);
+  showToast('合同已标记为逾期');
+}
+
+async function markActive(cid) {
+  await fetch('/api/contracts/' + encodeURIComponent(cid) + '/status', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: 'active'})
+  });
+  selectContract(cid);
+  showToast('合同已恢复活跃');
+}
+
+async function closeContract(cid) {
+  const status = confirm('选「确定」结清合同，选「取消」标记为设备回收') ? 'closed' : 'recovered';
+  await fetch('/api/contracts/' + encodeURIComponent(cid) + '/status', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: status})
+  });
+  selectContract(cid);
+  showToast(status === 'closed' ? '合同已结清' : '合同已标记为设备回收');
+}
+
+async function showNewContractModal() {
+  const [customersResp, productsResp] = await Promise.all([
+    fetch('/api/customers'), fetch('/api/loan-products')
+  ]);
+  const customers = await customersResp.json();
+  const products = await productsResp.json();
+  const activeProducts = products.filter(function(p) { return p.status === 'active'; });
+
+  const customerOpts = customers.map(function(c) { return '<option value="' + c.id + '">' + escapeHtml(c.name) + ' (' + escapeHtml(c.device_id) + ')</option>'; }).join('');
+  const productOpts = activeProducts.map(function(p) { return '<option value="' + p.id + '">' + p.name + ' — $' + p.total_amount.toFixed(0) + ' ' + p.term_months + '月 ' + p.interest_rate + '%</option>'; }).join('');
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="detail-card" style="max-width:500px;">
+      <h3 style="padding:20px 24px 0;">新合同</h3>
+      <div class="detail-body">
+        <div class="form-group">
+          <label>客户</label>
+          <select id="newContractCustomer" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 12px;font-family:inherit;">${customerOpts}</select>
+        </div>
+        <div class="form-group">
+          <label>贷款产品</label>
+          <select id="newContractProduct" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 12px;font-family:inherit;">${productOpts}</select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" onclick="loadContracts();">取消</button>
+          <button class="btn btn-primary" onclick="createContract()">确认创建</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function createContract() {
+  const customer_id = document.getElementById('newContractCustomer').value;
+  const product_id = document.getElementById('newContractProduct').value;
+  const resp = await fetch('/api/contracts', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({customer_id: customer_id, product_id: product_id})
+  });
+  if (!resp.ok) { const err = await resp.json(); alert('创建失败: ' + (err.detail || '')); return; }
+  const c = await resp.json();
+  showToast('合同 ' + c.contract_no + ' 已创建');
+  selectContract(c.id);
+}
+
+async function showLoanProductModal() {
+  const resp = await fetch('/api/loan-products');
+  const products = await resp.json();
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div class="detail-card" style="max-width:700px;">
+      <h3 style="padding:20px 24px 0;">贷款产品配置</h3>
+      <div class="detail-body">
+        <table class="tx-table">
+          <thead><tr><th>名称</th><th>kW</th><th>月数</th><th>利率</th><th>首付%</th><th>总价</th><th>状态</th></tr></thead>
+          <tbody>
+            ${products.map(function(p) { return '<tr><td>' + p.name + '</td><td>' + p.capacity_kw + '</td><td>' + p.term_months + '</td><td>' + p.interest_rate + '%</td><td>' + p.down_payment_pct + '%</td><td>$' + p.total_amount.toFixed(0) + '</td><td>' + (p.status === 'active' ? '🟢' : '⚫') + '</td></tr>'; }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
 </script>
 {% endblock %}
