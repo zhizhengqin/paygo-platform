@@ -19,6 +19,7 @@ from app.routers.tokens import router as tokens_router
 from app.routers.alerts import router as alerts_router
 from app.routers.reports import router as reports_router
 from app.routers.settings import router as settings_router
+from app.routers.controller import router as controller_router
 
 
 @asynccontextmanager
@@ -149,6 +150,7 @@ app.include_router(tokens_router)
 app.include_router(alerts_router)
 app.include_router(reports_router)
 app.include_router(settings_router)
+app.include_router(controller_router)
 
 
 @app.get("/api/v1/health")
@@ -181,3 +183,9 @@ async def dashboard(request: Request):
     if not sid or await session_get(sid) is None:
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(request, "dashboard.html")
+
+
+@app.get("/controller")
+async def controller_page(request: Request):
+    """Web 版 PAYGO 控制器模拟器（安卓手机浏览器可访问）"""
+    return templates.TemplateResponse(request, "controller.html")

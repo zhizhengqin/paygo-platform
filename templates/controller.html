@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .controller-container {
+    max-width: 400px; margin: 24px auto; padding: 0 16px;
+  }
+  .controller-screen {
+    background: #0a0a0a; border-radius: 16px; padding: 24px;
+    color: #10b981; font-family: 'Courier New', monospace;
+    min-height: 360px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .ctrl-line { margin: 6px 0; font-size: 14px; line-height: 1.6; }
+  .ctrl-label { color: #64748b; }
+  .ctrl-value { color: #10b981; font-weight: 600; }
+  .ctrl-warn { color: #f59e0b; }
+  .ctrl-error { color: #ef4444; }
+  .ctrl-relay-on { color: #10b981; font-size: 18px; }
+  .ctrl-relay-off { color: #6b7280; font-size: 18px; }
+  .token-input {
+    width: 100%; padding: 12px 16px; font-size: 20px; text-align: center;
+    letter-spacing: 8px; border: 2px solid #10b981; border-radius: 8px;
+    background: #0a0a0a; color: #10b981; font-family: 'Courier New', monospace;
+    margin: 12px 0;
+  }
+  .token-input:focus { outline: none; border-color: #34d399; }
+  .ctrl-btn {
+    width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #10b981;
+    border-radius: 8px; background: transparent; color: #10b981;
+    font-size: 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .ctrl-btn:active { background: #10b981; color: #000; }
+  .ctrl-btn.danger { border-color: #ef4444; color: #ef4444; }
+  .status-badge-ctrl {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600;
+  }
+  .status-active { background: #065f46; color: #10b981; }
+  .status-locked { background: #7f1d1d; color: #fca5a5; }
+  .status-permanent { background: #78350f; color: #fbbf24; }
+  .status-unbound { background: #1e293b; color: #94a3b8; }
+  .select-device {
+    width: 100%; padding: 8px 12px; font-size: 14px; border: 1px solid #374151;
+    border-radius: 8px; background: #0a0a0a; color: #e2e8f0; margin-bottom: 12px;
+  }
+</style>
+
+<div class="controller-container">
+  <div class="controller-screen" id="ctrlScreen">
+    <div style="text-align:center;padding:40px 0;color:#64748b;">
+      <div style="font-size:48px;margin-bottom:12px;">☀</div>
+      <p>选择设备开始模拟</p>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentDevice = null;
+
+async function loadDeviceList() {
+  try {
+    const resp = await fetch('/api/devices/geo');
+    const devices = await resp.json();
+    const sel = document.createElement('select');
+    sel.className = 'select-device';
+    sel.id = 'deviceSelector';
+    sel.innerHTML = '<option value="">-- 选择设备 --</option>' +
+      devices.map(d => `<option value="${d.id}|${d.device_id}|${d.name}">${d.name} · ${d.device_id} · ${d.status}</option>`).join('');
+    sel.onchange = onDeviceSelect;
+    document.getElementById('ctrlScreen').innerHTML = '';
+    document.getElementById('ctrlScreen').appendChild(sel);
+    const hint = document.createElement('div');
+    hint.style.cssText = 'text-align:center;color:#64748b;padding:20px;font-size:13px;';
+    hint.textContent = '模拟 PAYGO Dongle 控制器\n输入平台生成的 9 位 Token 验证';
+    document.getElementById('ctrlScreen').appendChild(hint);
+  } catch(e) {
+    document.getElementById('ctrlScreen').innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">加载设备失败<br><small>请先登录平台</small></div>';
+  }
+}
+
+async function onDeviceSelect() {
+  const sel = document.getElementById('deviceSelector');
+  if (!sel.value) return;
+  const [cid, deviceId, name] = sel.value.split('|');
+
+  // Get customer details
+  const resp = await fetch('/api/customers/' + encodeURIComponent(cid) + '/360');
+  const view = await resp.json();
+  currentDevice = view.customer;
+  renderController();
+}
+
+function renderController() {
+  if (!currentDevice) return;
+  const c = currentDevice;
+  const status = c.status;
+  const relay = (status === 'active' || status === 'permanent');
+  const labelMap = { active: '已激活', locked: '已锁定', permanent: '永久解锁' };
+  const clsMap = { active: 'status-active', locked: 'status-locked', permanent: 'status-permanent', unbound: 'status-unbound' };
+
+  document.getElementById('ctrlScreen').innerHTML = `
+    <div class="ctrl-line"><span class="ctrl-label">── 太阳能控制器 ──────────────────</span></div>
+    <div class="ctrl-line"><span class="ctrl-label">设备   </span><span class="ctrl-value">${escapeHtml(c.device_id)}</span></div>
+    <div class="ctrl-line"><span class="ctrl-label">客户   </span><span class="ctrl-value">${escapeHtml(c.name)}</span></div>
+    <div class="ctrl-line"><span class="ctrl-label">密钥   </span><span class="ctrl-value">${(c.secret_key||'').substring(0,8)}…</span></div>
+    <div class="ctrl-line"><span class="ctrl-label">状态   </span><span class="status-badge-ctrl ${clsMap[status]||'status-unbound'}">${labelMap[status]||'未绑定'}</span></div>
+    <div class="ctrl-line"><span class="ctrl-label">Count  </span><span class="ctrl-value">${c.count}</span></div>
+    <div class="ctrl-line" style="font-size:16px;margin-top:12px;">
+      继电器  <span class="${relay?'ctrl-relay-on':'ctrl-relay-off'}">${relay?'● 供电中':'○ 断开'}</span>
+    </div>
+    <div style="margin-top:16px;">
+      <input type="text" class="token-input" id="tokenInput" placeholder="9位Token" maxlength="9" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    </div>
+    <button class="ctrl-btn" onclick="submitToken()">验证 Token</button>
+    <button class="ctrl-btn danger" onclick="resetDevice()" style="margin-top:4px;">重置设备</button>
+    <div id="tokenResult" style="text-align:center;margin-top:8px;font-size:13px;"></div>
+  `;
+
+  document.getElementById('tokenInput').focus();
+  document.getElementById('tokenInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') submitToken();
+  });
+}
+
+async function submitToken() {
+  const input = document.getElementById('tokenInput');
+  const token = input.value.trim();
+  const result = document.getElementById('tokenResult');
+
+  if (token.length !== 9 || !/^\d{9}$/.test(token)) {
+    result.innerHTML = '<span class="ctrl-error">✗ Token 格式错误（需要9位数字）</span>';
+    return;
+  }
+  if (!currentDevice || !currentDevice.secret_key) {
+    result.innerHTML = '<span class="ctrl-error">✗ 设备密钥无效</span>';
+    return;
+  }
+
+  // Use server-side validation
+  try {
+    const resp = await fetch('/api/controller/validate-token', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        customer_id: currentDevice.id,
+        token: token,
+        count: currentDevice.count
+      })
+    });
+    const data = await resp.json();
+
+    if (!data.valid) {
+      result.innerHTML = `<span class="ctrl-error">✗ ${data.reason || 'Token 无效'}</span>`;
+    } else {
+      if (data.token_type === 'DISABLE_PAYG') {
+        result.innerHTML = '<span style="color:#fbbf24;">✓✓ 贷款已结清 · 设备永久解锁</span>';
+      } else {
+        result.innerHTML = `<span style="color:#10b981;">✓ 验证成功 · +${data.days} 天 · 剩余 ${data.remaining_days} 天</span>`;
+      }
+      input.value = '';
+      // Refresh device state
+      const resp2 = await fetch('/api/customers/' + encodeURIComponent(currentDevice.id) + '/360');
+      const view2 = await resp2.json();
+      currentDevice = view2.customer;
+      setTimeout(renderController, 800);
+    }
+  } catch(e) {
+    result.innerHTML = '<span class="ctrl-error">✗ 验证服务不可用</span>';
+  }
+}
+
+async function resetDevice() {
+  if (!confirm('确认重置此设备？')) return;
+  currentDevice.status = 'locked';
+  currentDevice.count = 0;
+  renderController();
+}
+
+// Auto-init if logged in
+if (document.cookie.includes('session') || document.cookie.includes('access_token')) {
+  loadDeviceList();
+} else {
+  document.getElementById('ctrlScreen').innerHTML = `
+    <div style="text-align:center;padding:40px;color:#64748b;">
+      <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+      <p>请先<a href="/login" style="color:#10b981;">登录</a>平台</p>
+    </div>`;
+}
+</script>
+{% endblock %}
