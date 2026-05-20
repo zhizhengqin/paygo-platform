@@ -76,3 +76,39 @@ async def test_logout_clears_session(client):
     response = await client.get("/logout", follow_redirects=False)
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
+
+
+async def test_login_failure_lockout_after_5_attempts(client):
+    """连续 5 次错误密码后，第 6 次被锁定阻止。"""
+    client.cookies.clear()
+    for i in range(5):
+        resp = await client.post("/login", data={
+            "username": "admin",
+            "password": "wrong",
+        })
+        assert resp.status_code == 200
+        assert "用户名或密码错误" in resp.text
+
+    # 第 6 次应该被锁定
+    resp = await client.post("/login", data={
+        "username": "admin",
+        "password": "wrong",
+    })
+    assert resp.status_code == 200
+    assert "已被锁定" in resp.text or "locked" in resp.text.lower()
+
+
+async def test_login_success_after_lockout_expiry(client):
+    """锁定期间正确密码也无法登录。"""
+    client.cookies.clear()
+    # 先锁定
+    for i in range(5):
+        await client.post("/login", data={
+            "username": "admin", "password": "wrong",
+        })
+    # 正确密码也不能登录
+    resp = await client.post("/login", data={
+        "username": "admin", "password": "admin123",
+    })
+    assert resp.status_code == 200
+    assert "locked" in resp.text.lower() or "锁定" in resp.text
