@@ -17,6 +17,7 @@ from app.routers.dashboard import router as dashboard_router
 from app.routers.contracts import router as contracts_router
 from app.routers.tokens import router as tokens_router
 from app.routers.alerts import router as alerts_router
+from app.routers.reports import router as reports_router
 
 
 @asynccontextmanager
@@ -122,6 +123,7 @@ app.include_router(dashboard_router)
 app.include_router(contracts_router)
 app.include_router(tokens_router)
 app.include_router(alerts_router)
+app.include_router(reports_router)
 
 
 @app.get("/dashboard")

@@ -192,6 +192,9 @@ function switchTab(tab) {
     document.getElementById('customerCount').textContent = '';
     document.getElementById('customerItems').innerHTML = '';
     initDeviceMap();
+  } else if (tab === 'reports') {
+    layout.classList.add('sidebar-hidden');
+    showReports();
   }
 }
 
@@ -1310,6 +1313,77 @@ function searchDeviceOnMap() {
   if (filtered.length === 1 && filtered[0].gps_latitude) {
     deviceMap.setView([filtered[0].gps_latitude, filtered[0].gps_longitude], 14);
   }
+}
+
+// ---- 报表中心 ----
+async function showReports() {
+  var resp = await fetch('/api/reports/summary');
+  var r = await resp.json();
+  var esgResp = await fetch('/api/reports/esg');
+  var esg = await esgResp.json();
+
+  document.getElementById('detailPanel').innerHTML = `
+    <div id="reportsHome" style="padding:24px;max-width:900px;">
+      <h2 style="margin-bottom:16px;">报表中心</h2>
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        <button class="btn btn-primary btn-sm" onclick="exportCSV()">导出 CSV</button>
+        <input type="date" id="reportStart" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+        <input type="date" id="reportEnd" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+        <button class="btn btn-outline btn-sm" onclick="showReportsWithDate()">查询</button>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+        <div class="kpi-card kpi-blue"><div class="kpi-value">${r.new_customers}</div><div class="kpi-label">新增客户</div></div>
+        <div class="kpi-card kpi-green"><div class="kpi-value">$${r.total_revenue.toFixed(0)}</div><div class="kpi-label">总收入</div></div>
+        <div class="kpi-card kpi-gold"><div class="kpi-value">${r.token_count}</div><div class="kpi-label">Token 生成</div></div>
+        <div class="kpi-card kpi-red"><div class="kpi-value">${r.overdue_rate}%</div><div class="kpi-label">逾期率</div></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-chart-box"><h4>ESG 碳减排</h4>
+          <div style="text-align:center;padding:20px;">
+            <div style="font-size:36px;font-weight:700;color:#059669;">${esg.co2_reduction_tons} 吨</div>
+            <div style="color:#64748b;">CO₂ 减排量</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:8px;">预估发电 ${esg.estimated_kwh.toLocaleString()} kWh | ${esg.total_days} 天</div>
+          </div>
+        </div>
+        <div class="dash-table-box"><h4>期间汇总</h4>
+          <table class="tx-table">
+            <tr><td>报告期间</td><td>${r.period.start} ~ ${r.period.end}</td></tr>
+            <tr><td>新增合同</td><td>${r.new_contracts}</td></tr>
+            <tr><td>告警数</td><td>${r.alert_count}</td></tr>
+            <tr><td>活跃设备</td><td>${r.active_devices}</td></tr>
+            <tr><td>总客户数</td><td>${r.total_customers}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function showReportsWithDate() {
+  var s = document.getElementById('reportStart').value || '';
+  var e = document.getElementById('reportEnd').value || '';
+  var url = '/api/reports/summary';
+  if (s && e) url += '?start_date=' + s + '&end_date=' + e;
+  var resp = await fetch(url);
+  var r = await resp.json();
+  document.querySelector('#reportsHome .kpi-grid').innerHTML = `
+    <div class="kpi-card kpi-blue"><div class="kpi-value">${r.new_customers}</div><div class="kpi-label">新增客户</div></div>
+    <div class="kpi-card kpi-green"><div class="kpi-value">$${r.total_revenue.toFixed(0)}</div><div class="kpi-label">总收入</div></div>
+    <div class="kpi-card kpi-gold"><div class="kpi-value">${r.token_count}</div><div class="kpi-label">Token 生成</div></div>
+    <div class="kpi-card kpi-red"><div class="kpi-value">${r.overdue_rate}%</div><div class="kpi-label">逾期率</div></div>`;
+  // Also update the period summary table
+  var tbl = document.querySelector('#reportsHome .dash-table-box table');
+  if (tbl) {
+    tbl.innerHTML = `
+      <tr><td>报告期间</td><td>${r.period.start} ~ ${r.period.end}</td></tr>
+      <tr><td>新增合同</td><td>${r.new_contracts}</td></tr>
+      <tr><td>告警数</td><td>${r.alert_count}</td></tr>
+      <tr><td>活跃设备</td><td>${r.active_devices}</td></tr>
+      <tr><td>总客户数</td><td>${r.total_customers}</td></tr>`;
+  }
+}
+
+function exportCSV() {
+  window.open('/api/reports/export', '_blank');
 }
 </script>
 {% endblock %}
