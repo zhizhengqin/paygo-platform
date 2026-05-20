@@ -1,0 +1,76 @@
+- generic [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - link "退出" [ref=e8] [cursor=pointer]:
+      - /url: /logout
+  - navigation [ref=e9]:
+    - generic [ref=e10] [cursor=pointer]: 运营仪表盘
+    - generic [ref=e11] [cursor=pointer]: 客户管理
+    - generic [ref=e12] [cursor=pointer]: 合同管理
+  - generic [ref=e13]:
+    - complementary [ref=e90]:
+      - generic [ref=e91]:
+        - heading "合同列表" [level=3] [ref=e92] [cursor=pointer]
+        - generic [ref=e93]: "0"
+        - button "+ 新增" [ref=e94] [cursor=pointer]
+      - generic [ref=e96]:
+        - generic [ref=e97]: 贷款产品
+        - button "⚙ 贷款产品配置" [active] [ref=e98] [cursor=pointer]
+        - button "+ 新合同" [ref=e99] [cursor=pointer]
+    - main [ref=e14]:
+      - generic [ref=e103]:
+        - heading "贷款产品配置" [level=3] [ref=e104]
+        - table [ref=e106]:
+          - rowgroup [ref=e107]:
+            - row "名称 kW 月数 利率 首付% 总价 状态" [ref=e108]:
+              - columnheader "名称" [ref=e109]
+              - columnheader "kW" [ref=e110]
+              - columnheader "月数" [ref=e111]
+              - columnheader "利率" [ref=e112]
+              - columnheader "首付%" [ref=e113]
+              - columnheader "总价" [ref=e114]
+              - columnheader "状态" [ref=e115]
+          - rowgroup [ref=e116]:
+            - row "6kW-12月基础 6 12 10% 20% $690 🟢" [ref=e117]:
+              - cell "6kW-12月基础" [ref=e118]
+              - cell "6" [ref=e119]
+              - cell "12" [ref=e120]
+              - cell "10%" [ref=e121]
+              - cell "20%" [ref=e122]
+              - cell "$690" [ref=e123]
+              - cell "🟢" [ref=e124]
+            - row "10kW-24月标准 10 24 12% 20% $1150 🟢" [ref=e125]:
+              - cell "10kW-24月标准" [ref=e126]
+              - cell "10" [ref=e127]
+              - cell "24" [ref=e128]
+              - cell "12%" [ref=e129]
+              - cell "20%" [ref=e130]
+              - cell "$1150" [ref=e131]
+              - cell "🟢" [ref=e132]
+            - row "15kW-24月标准 15 24 12% 20% $1725 🟢" [ref=e133]:
+              - cell "15kW-24月标准" [ref=e134]
+              - cell "15" [ref=e135]
+              - cell "24" [ref=e136]
+              - cell "12%" [ref=e137]
+              - cell "20%" [ref=e138]
+              - cell "$1725" [ref=e139]
+              - cell "🟢" [ref=e140]
+            - row "20kW-36月进阶 20 36 14% 20% $2300 🟢" [ref=e141]:
+              - cell "20kW-36月进阶" [ref=e142]
+              - cell "20" [ref=e143]
+              - cell "36" [ref=e144]
+              - cell "14%" [ref=e145]
+              - cell "20%" [ref=e146]
+              - cell "$2300" [ref=e147]
+              - cell "🟢" [ref=e148]
+            - row "30kW-36月旗舰 30 36 14% 20% $3450 🟢" [ref=e149]:
+              - cell "30kW-36月旗舰" [ref=e150]
+              - cell "30" [ref=e151]
+              - cell "36" [ref=e152]
+              - cell "14%" [ref=e153]
+              - cell "20%" [ref=e154]
+              - cell "$3450" [ref=e155]
+              - cell "🟢" [ref=e156]

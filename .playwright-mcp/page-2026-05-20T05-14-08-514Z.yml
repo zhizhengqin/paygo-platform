@@ -1,0 +1,166 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - link "退出" [ref=e8] [cursor=pointer]:
+      - /url: /logout
+  - navigation [ref=e9]:
+    - generic [ref=e10] [cursor=pointer]: 运营仪表盘
+    - generic [ref=e11] [cursor=pointer]: 客户管理
+    - generic [ref=e12] [cursor=pointer]: 合同管理
+  - generic [ref=e13]:
+    - complementary [ref=e90]:
+      - generic [ref=e91]:
+        - heading "合同列表" [level=3] [ref=e92] [cursor=pointer]
+        - generic [ref=e93]: "1"
+        - button "+ 新增" [ref=e94] [cursor=pointer]
+      - generic [ref=e210] [cursor=pointer]:
+        - generic [ref=e211]: 🟢 KH-2026-00001
+        - generic [ref=e212]: Sok Heng · active
+      - generic [ref=e96]:
+        - generic [ref=e213]: 贷款产品
+        - button "⚙ 贷款产品配置" [ref=e214] [cursor=pointer]
+        - button "+ 新合同" [ref=e215] [cursor=pointer]
+    - main [ref=e14]:
+      - generic [ref=e216]:
+        - generic [ref=e217]:
+          - generic [ref=e218]: "2"
+          - generic [ref=e219]:
+            - heading "KH-2026-00001" [level=2] [ref=e220]
+            - generic [ref=e221]: 执行中
+        - generic [ref=e222]:
+          - generic [ref=e223]:
+            - generic [ref=e224]: 客户
+            - generic [ref=e225]: Sok Heng
+          - generic [ref=e226]:
+            - generic [ref=e227]: 贷款金额
+            - generic [ref=e228]: $552.00
+          - generic [ref=e229]:
+            - generic [ref=e230]: 月供
+            - generic [ref=e231]: $48.53
+          - generic [ref=e232]:
+            - generic [ref=e233]: 首付
+            - generic [ref=e234]: $138.00
+          - generic [ref=e235]:
+            - generic [ref=e236]: 合同期限
+            - generic [ref=e237]: 2026-05-01 ~ 2027-05-01
+          - generic [ref=e238]:
+            - generic [ref=e239]: 剩余天数
+            - generic [ref=e240]: 360 天
+        - generic [ref=e241]:
+          - heading "操作" [level=4] [ref=e242]
+          - generic [ref=e243]:
+            - button "标记逾期" [ref=e244] [cursor=pointer]
+            - button "结清/回收" [ref=e245] [cursor=pointer]
+        - generic [ref=e246]:
+          - heading "还款计划表" [level=4] [ref=e247]
+          - table [ref=e249]:
+            - rowgroup [ref=e250]:
+              - row "期数 应还日 月供 本金 利息 剩余本金 状态" [ref=e251]:
+                - columnheader "期数" [ref=e252]
+                - columnheader "应还日" [ref=e253]
+                - columnheader "月供" [ref=e254]
+                - columnheader "本金" [ref=e255]
+                - columnheader "利息" [ref=e256]
+                - columnheader "剩余本金" [ref=e257]
+                - columnheader "状态" [ref=e258]
+            - rowgroup [ref=e259]:
+              - row "1 2026-06-01 $48.53 $43.93 $4.60 $508.07 ⏳" [ref=e260]:
+                - cell "1" [ref=e261]
+                - cell "2026-06-01" [ref=e262]
+                - cell "$48.53" [ref=e263]
+                - cell "$43.93" [ref=e264]
+                - cell "$4.60" [ref=e265]
+                - cell "$508.07" [ref=e266]
+                - cell "⏳" [ref=e267]
+              - row "2 2026-07-01 $48.53 $44.30 $4.23 $463.77 ⏳" [ref=e268]:
+                - cell "2" [ref=e269]
+                - cell "2026-07-01" [ref=e270]
+                - cell "$48.53" [ref=e271]
+                - cell "$44.30" [ref=e272]
+                - cell "$4.23" [ref=e273]
+                - cell "$463.77" [ref=e274]
+                - cell "⏳" [ref=e275]
+              - row "3 2026-08-01 $48.53 $44.67 $3.86 $419.10 ⏳" [ref=e276]:
+                - cell "3" [ref=e277]
+                - cell "2026-08-01" [ref=e278]
+                - cell "$48.53" [ref=e279]
+                - cell "$44.67" [ref=e280]
+                - cell "$3.86" [ref=e281]
+                - cell "$419.10" [ref=e282]
+                - cell "⏳" [ref=e283]
+              - row "4 2026-09-01 $48.53 $45.04 $3.49 $374.06 ⏳" [ref=e284]:
+                - cell "4" [ref=e285]
+                - cell "2026-09-01" [ref=e286]
+                - cell "$48.53" [ref=e287]
+                - cell "$45.04" [ref=e288]
+                - cell "$3.49" [ref=e289]
+                - cell "$374.06" [ref=e290]
+                - cell "⏳" [ref=e291]
+              - row "5 2026-10-01 $48.53 $45.41 $3.12 $328.65 ⏳" [ref=e292]:
+                - cell "5" [ref=e293]
+                - cell "2026-10-01" [ref=e294]
+                - cell "$48.53" [ref=e295]
+                - cell "$45.41" [ref=e296]
+                - cell "$3.12" [ref=e297]
+                - cell "$328.65" [ref=e298]
+                - cell "⏳" [ref=e299]
+              - row "6 2026-11-01 $48.53 $45.79 $2.74 $282.86 ⏳" [ref=e300]:
+                - cell "6" [ref=e301]
+                - cell "2026-11-01" [ref=e302]
+                - cell "$48.53" [ref=e303]
+                - cell "$45.79" [ref=e304]
+                - cell "$2.74" [ref=e305]
+                - cell "$282.86" [ref=e306]
+                - cell "⏳" [ref=e307]
+              - row "7 2026-12-01 $48.53 $46.17 $2.36 $236.69 ⏳" [ref=e308]:
+                - cell "7" [ref=e309]
+                - cell "2026-12-01" [ref=e310]
+                - cell "$48.53" [ref=e311]
+                - cell "$46.17" [ref=e312]
+                - cell "$2.36" [ref=e313]
+                - cell "$236.69" [ref=e314]
+                - cell "⏳" [ref=e315]
+              - row "8 2027-01-01 $48.53 $46.56 $1.97 $190.13 ⏳" [ref=e316]:
+                - cell "8" [ref=e317]
+                - cell "2027-01-01" [ref=e318]
+                - cell "$48.53" [ref=e319]
+                - cell "$46.56" [ref=e320]
+                - cell "$1.97" [ref=e321]
+                - cell "$190.13" [ref=e322]
+                - cell "⏳" [ref=e323]
+              - row "9 2027-02-01 $48.53 $46.95 $1.58 $143.18 ⏳" [ref=e324]:
+                - cell "9" [ref=e325]
+                - cell "2027-02-01" [ref=e326]
+                - cell "$48.53" [ref=e327]
+                - cell "$46.95" [ref=e328]
+                - cell "$1.58" [ref=e329]
+                - cell "$143.18" [ref=e330]
+                - cell "⏳" [ref=e331]
+              - row "10 2027-03-01 $48.53 $47.34 $1.19 $95.84 ⏳" [ref=e332]:
+                - cell "10" [ref=e333]
+                - cell "2027-03-01" [ref=e334]
+                - cell "$48.53" [ref=e335]
+                - cell "$47.34" [ref=e336]
+                - cell "$1.19" [ref=e337]
+                - cell "$95.84" [ref=e338]
+                - cell "⏳" [ref=e339]
+              - row "11 2027-04-01 $48.53 $47.73 $0.80 $48.11 ⏳" [ref=e340]:
+                - cell "11" [ref=e341]
+                - cell "2027-04-01" [ref=e342]
+                - cell "$48.53" [ref=e343]
+                - cell "$47.73" [ref=e344]
+                - cell "$0.80" [ref=e345]
+                - cell "$48.11" [ref=e346]
+                - cell "⏳" [ref=e347]
+              - row "12 2027-05-01 $48.51 $48.11 $0.40 $0.00 ⏳" [ref=e348]:
+                - cell "12" [ref=e349]
+                - cell "2027-05-01" [ref=e350]
+                - cell "$48.51" [ref=e351]
+                - cell "$48.11" [ref=e352]
+                - cell "$0.40" [ref=e353]
+                - cell "$0.00" [ref=e354]
+                - cell "⏳" [ref=e355]
+  - generic: 合同已审批通过，还款计划已生成

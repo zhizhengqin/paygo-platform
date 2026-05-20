@@ -1,0 +1,47 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - link "退出" [ref=e8] [cursor=pointer]:
+      - /url: /logout
+  - navigation [ref=e9]:
+    - generic [ref=e10] [cursor=pointer]: 运营仪表盘
+    - generic [ref=e11] [cursor=pointer]: 客户管理
+    - generic [ref=e12] [cursor=pointer]: 合同管理
+  - generic [ref=e13]:
+    - complementary [ref=e87]:
+      - generic [ref=e88]:
+        - heading "客户列表" [level=3] [ref=e89] [cursor=pointer]
+        - generic [ref=e90]: "7"
+        - button "+ 新增" [ref=e91] [cursor=pointer]
+      - generic [ref=e92]:
+        - generic [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]: ⭐ Sok Heng
+          - generic [ref=e95]: 0888888001 · DEV-382ba8
+        - generic [ref=e96] [cursor=pointer]:
+          - generic [ref=e97]: 🟢 Sok Heng
+          - generic [ref=e98]: 0888888001 · DEV-93b311
+        - generic [ref=e99] [cursor=pointer]:
+          - generic [ref=e100]: 🟢 Sok Heng
+          - generic [ref=e101]: 0888888001 · DEV-750660
+        - generic [ref=e102] [cursor=pointer]:
+          - generic [ref=e103]: 🟢 Sok Heng
+          - generic [ref=e104]: 0888888001 · DEV-936a32
+        - generic [ref=e105] [cursor=pointer]:
+          - generic [ref=e106]: 🟢 Sok Heng
+          - generic [ref=e107]: 0888888001 · DEV-10afc2
+        - generic [ref=e108] [cursor=pointer]:
+          - generic [ref=e109]: 🔴 Bob
+          - generic [ref=e110]: 044555666 · DEV-STATS-02
+        - generic [ref=e111] [cursor=pointer]:
+          - generic [ref=e112]: 🟢 Alice
+          - generic [ref=e113]: 011222333 · DEV-STATS-01
+      - generic [ref=e114]:
+        - generic [ref=e115]: 密钥生成器
+        - button "生成 5 个设备密钥" [ref=e116] [cursor=pointer]
+    - main [ref=e14]:
+      - generic [ref=e117]:
+        - generic [ref=e118]: ☀
+        - paragraph [ref=e119]: 选择左侧客户查看详情

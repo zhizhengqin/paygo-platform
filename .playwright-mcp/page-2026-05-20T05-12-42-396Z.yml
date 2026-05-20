@@ -1,0 +1,47 @@
+- generic [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - link "退出" [ref=e8] [cursor=pointer]:
+      - /url: /logout
+  - navigation [ref=e9]:
+    - generic [ref=e10] [cursor=pointer]: 运营仪表盘
+    - generic [ref=e11] [cursor=pointer]: 客户管理
+    - generic [ref=e12] [cursor=pointer]: 合同管理
+  - generic [ref=e13]:
+    - complementary [ref=e90]:
+      - generic [ref=e91]:
+        - heading "合同列表" [level=3] [ref=e92] [cursor=pointer]
+        - generic [ref=e93]: "0"
+        - button "+ 新增" [ref=e94] [cursor=pointer]
+      - generic [ref=e96]:
+        - generic [ref=e157]: 贷款产品
+        - button "⚙ 贷款产品配置" [ref=e158] [cursor=pointer]
+        - button "+ 新合同" [active] [ref=e159] [cursor=pointer]
+    - main [ref=e14]:
+      - generic [ref=e163]:
+        - heading "新合同" [level=3] [ref=e164]
+        - generic [ref=e165]:
+          - generic [ref=e166]:
+            - generic [ref=e167]: 客户
+            - combobox [ref=e168]:
+              - option "Sok Heng (DEV-382ba8)" [selected]
+              - option "Sok Heng (DEV-93b311)"
+              - option "Sok Heng (DEV-750660)"
+              - option "Sok Heng (DEV-936a32)"
+              - option "Sok Heng (DEV-10afc2)"
+              - option "Bob (DEV-STATS-02)"
+              - option "Alice (DEV-STATS-01)"
+          - generic [ref=e169]:
+            - generic [ref=e170]: 贷款产品
+            - combobox [ref=e171]:
+              - option "6kW-12月基础 — $690 12月 10%" [selected]
+              - option "10kW-24月标准 — $1150 24月 12%"
+              - option "15kW-24月标准 — $1725 24月 12%"
+              - option "20kW-36月进阶 — $2300 36月 14%"
+              - option "30kW-36月旗舰 — $3450 36月 14%"
+          - generic [ref=e172]:
+            - button "取消" [ref=e173] [cursor=pointer]
+            - button "确认创建" [ref=e174] [cursor=pointer]
