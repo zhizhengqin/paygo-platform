@@ -1,10 +1,16 @@
 """Async 数据访问层 — 所有 CRUD 操作替换原 db.py 的内存 dict 实现。"""
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Customer, Token, PaymentRate, SmsRecord, _new_id
+from app.models import (
+    Customer, Token, PaymentRate, SmsRecord, LoanProduct, Contract,
+    RepaymentSchedule, _new_id,
+)
 
 
 class DuplicateDeviceError(Exception):
@@ -247,3 +253,296 @@ async def get_dashboard_stats(db: AsyncSession) -> dict:
         "total_tokens": total_tokens,
         "recent_transactions": recent_transactions,
     }
+
+
+# ============================================================
+# 等额本息计算
+# ============================================================
+
+def calc_amortization(
+    loan_amount: Decimal,
+    annual_rate: Decimal,
+    term_months: int,
+    start_date,
+) -> list[dict]:
+    """等额本息还款计划。返回每期明细 list[dict]"""
+    monthly_rate = annual_rate / Decimal("100") / Decimal("12")
+    rate_plus_one = Decimal("1") + monthly_rate
+
+    # 月供 = P × r × (1+r)^n / ((1+r)^n - 1)
+    factor = rate_plus_one ** term_months
+    monthly = (loan_amount * monthly_rate * factor) / (factor - Decimal("1"))
+    monthly = monthly.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    schedules = []
+    balance = loan_amount
+    for i in range(1, term_months + 1):
+        interest = (balance * monthly_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        principal = (monthly - interest).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 最后一期：确保余额归零
+        if i == term_months:
+            principal = balance
+            monthly = principal + interest
+        balance = (balance - principal).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        schedules.append({
+            "period_no": i,
+            "due_date": start_date + relativedelta(months=i),
+            "principal": principal,
+            "interest": interest,
+            "total": monthly if i < term_months else (principal + interest),
+            "balance": balance,
+            "status": "pending",
+        })
+    return schedules
+
+
+# ============================================================
+# 合同编号生成
+# ============================================================
+
+async def generate_contract_no(db: AsyncSession) -> str:
+    """生成合同编号：KH-YYYY-NNNNN"""
+    now = datetime.now()
+    year = now.year
+    from sqlalchemy import extract
+    result = await db.execute(
+        select(func.count()).select_from(Contract).where(
+            extract("year", Contract.created_at) == year
+        )
+    )
+    count = (result.scalar() or 0) + 1
+    return f"KH-{year}-{count:05d}"
+
+
+# ============================================================
+# 贷款产品 CRUD
+# ============================================================
+
+async def add_loan_product(
+    db: AsyncSession, name: str, capacity_kw: Decimal, term_months: int,
+    interest_rate: Decimal, down_payment_pct: Decimal, total_amount: Decimal,
+) -> str:
+    pid = _new_id("LP")
+    lp = LoanProduct(
+        id=pid, name=name, capacity_kw=capacity_kw, term_months=term_months,
+        interest_rate=interest_rate, down_payment_pct=down_payment_pct,
+        total_amount=total_amount,
+    )
+    db.add(lp)
+    await db.commit()
+    return pid
+
+
+async def get_loan_products(db: AsyncSession, status: str = None) -> list[dict]:
+    q = select(LoanProduct).order_by(LoanProduct.capacity_kw)
+    if status:
+        q = q.where(LoanProduct.status == status)
+    result = await db.execute(q)
+    return [_loan_product_to_dict(lp) for lp in result.scalars().all()]
+
+
+async def get_loan_product(db: AsyncSession, pid: str) -> dict | None:
+    result = await db.execute(select(LoanProduct).where(LoanProduct.id == pid))
+    lp = result.scalar()
+    return _loan_product_to_dict(lp) if lp else None
+
+
+async def update_loan_product(db: AsyncSession, pid: str, **kwargs) -> bool:
+    result = await db.execute(select(LoanProduct).where(LoanProduct.id == pid))
+    lp = result.scalar()
+    if not lp:
+        return False
+    for k, v in kwargs.items():
+        if hasattr(lp, k):
+            setattr(lp, k, v)
+    await db.commit()
+    return True
+
+
+async def disable_loan_product(db: AsyncSession, pid: str) -> bool:
+    return await update_loan_product(db, pid, status="disabled")
+
+
+def _loan_product_to_dict(lp: LoanProduct) -> dict:
+    return {
+        "id": lp.id,
+        "name": lp.name,
+        "capacity_kw": float(lp.capacity_kw) if lp.capacity_kw else 0,
+        "term_months": lp.term_months,
+        "interest_rate": float(lp.interest_rate) if lp.interest_rate else 0,
+        "down_payment_pct": float(lp.down_payment_pct) if lp.down_payment_pct else 0,
+        "total_amount": float(lp.total_amount) if lp.total_amount else 0,
+        "status": lp.status,
+        "created_at": lp.created_at.strftime("%Y-%m-%d %H:%M:%S") if lp.created_at else None,
+    }
+
+
+# ============================================================
+# 合同 CRUD
+# ============================================================
+
+async def add_contract(
+    db: AsyncSession, customer_id: str, product_id: str,
+    down_payment: Decimal, loan_amount: Decimal, monthly_payment: Decimal,
+    start_date, end_date,
+) -> str:
+    cid = _new_id("CT")
+    contract_no = await generate_contract_no(db)
+    c = Contract(
+        id=cid, contract_no=contract_no, customer_id=customer_id,
+        product_id=product_id, down_payment=down_payment, loan_amount=loan_amount,
+        monthly_payment=monthly_payment, start_date=start_date, end_date=end_date,
+    )
+    db.add(c)
+    await db.commit()
+    return cid
+
+
+async def get_contracts(db: AsyncSession, status: str = None,
+                        customer_id: str = None) -> list[dict]:
+    q = select(Contract).order_by(Contract.created_at.desc())
+    if status:
+        q = q.where(Contract.status == status)
+    if customer_id:
+        q = q.where(Contract.customer_id == customer_id)
+    result = await db.execute(q)
+    contracts = result.scalars().all()
+    return [_contract_to_dict(c) for c in contracts]
+
+
+async def get_contract(db: AsyncSession, cid: str) -> dict | None:
+    result = await db.execute(select(Contract).where(Contract.id == cid))
+    c = result.scalar()
+    return _contract_to_dict(c) if c else None
+
+
+async def get_contract_with_schedules(db: AsyncSession, cid: str) -> dict | None:
+    result = await db.execute(
+        select(Contract).where(Contract.id == cid).options(
+            selectinload(Contract.schedules)
+        )
+    )
+    c = result.unique().scalar_one_or_none()
+    if not c:
+        return None
+    d = _contract_to_dict(c)
+    d["schedules"] = []
+    if c.schedules:
+        d["schedules"] = sorted(
+            [_schedule_to_dict(s) for s in c.schedules],
+            key=lambda x: x["period_no"],
+        )
+    return d
+
+
+async def approve_contract(db: AsyncSession, cid: str) -> dict | None:
+    """审批通过合同：生成还款计划 + 状态变更"""
+    result = await db.execute(select(Contract).where(Contract.id == cid))
+    c = result.scalar()
+    if not c or c.status != "draft":
+        return None
+
+    lp_result = await db.execute(select(LoanProduct).where(LoanProduct.id == c.product_id))
+    lp = lp_result.scalar()
+    if not lp:
+        return None
+
+    schedules_data = calc_amortization(
+        loan_amount=c.loan_amount,
+        annual_rate=lp.interest_rate,
+        term_months=lp.term_months,
+        start_date=c.start_date,
+    )
+
+    for s in schedules_data:
+        rs = RepaymentSchedule(
+            id=_new_id("RS"),
+            contract_id=c.id,
+            period_no=s["period_no"],
+            due_date=s["due_date"],
+            principal=s["principal"],
+            interest=s["interest"],
+            total=s["total"],
+            balance=s["balance"],
+            status="pending",
+        )
+        db.add(rs)
+
+    c.status = "active"
+    c.approved_at = datetime.now()
+    c.remaining_days = lp.term_months * 30
+    await db.commit()
+    await db.refresh(c, ["schedules"])
+
+    return await get_contract_with_schedules(db, cid)
+
+
+async def update_contract_status(db: AsyncSession, cid: str, status: str) -> bool:
+    valid_statuses = ["draft", "approved", "active", "overdue", "closed", "recovered"]
+    if status not in valid_statuses:
+        return False
+    result = await db.execute(select(Contract).where(Contract.id == cid))
+    c = result.scalar()
+    if not c:
+        return False
+    c.status = status
+    await db.commit()
+    return True
+
+
+def _contract_to_dict(c: Contract) -> dict:
+    return {
+        "id": c.id,
+        "contract_no": c.contract_no,
+        "customer_id": c.customer_id,
+        "customer_name": c.customer.name if c.customer else None,
+        "product_id": c.product_id,
+        "down_payment": float(c.down_payment) if c.down_payment else 0,
+        "loan_amount": float(c.loan_amount) if c.loan_amount else 0,
+        "monthly_payment": float(c.monthly_payment) if c.monthly_payment else 0,
+        "status": c.status,
+        "start_date": c.start_date.strftime("%Y-%m-%d") if c.start_date else None,
+        "end_date": c.end_date.strftime("%Y-%m-%d") if c.end_date else None,
+        "remaining_days": c.remaining_days,
+        "approved_at": c.approved_at.strftime("%Y-%m-%d %H:%M:%S") if c.approved_at else None,
+        "created_at": c.created_at.strftime("%Y-%m-%d %H:%M:%S") if c.created_at else None,
+    }
+
+
+def _schedule_to_dict(s: RepaymentSchedule) -> dict:
+    return {
+        "id": s.id,
+        "period_no": s.period_no,
+        "due_date": s.due_date.strftime("%Y-%m-%d") if s.due_date else None,
+        "principal": float(s.principal) if s.principal else 0,
+        "interest": float(s.interest) if s.interest else 0,
+        "total": float(s.total) if s.total else 0,
+        "balance": float(s.balance) if s.balance else 0,
+        "status": s.status,
+    }
+
+
+# ============================================================
+# 贷款产品种子数据
+# ============================================================
+
+async def seed_loan_products(db: AsyncSession):
+    """初始化 5 档贷款产品（幂等：已存在则跳过）"""
+    existing = await db.execute(select(func.count()).select_from(LoanProduct))
+    if existing.scalar() > 0:
+        return
+
+    products = [
+        ("6kW-12月基础", Decimal("6.00"), 12, Decimal("10.00"), Decimal("20.00"), Decimal("690.00")),
+        ("10kW-24月标准", Decimal("10.00"), 24, Decimal("12.00"), Decimal("20.00"), Decimal("1150.00")),
+        ("15kW-24月标准", Decimal("15.00"), 24, Decimal("12.00"), Decimal("20.00"), Decimal("1725.00")),
+        ("20kW-36月进阶", Decimal("20.00"), 36, Decimal("14.00"), Decimal("20.00"), Decimal("2300.00")),
+        ("30kW-36月旗舰", Decimal("30.00"), 36, Decimal("14.00"), Decimal("20.00"), Decimal("3450.00")),
+    ]
+    for name, cap, term, rate, dp_pct, total in products:
+        pid = _new_id("LP")
+        db.add(LoanProduct(
+            id=pid, name=name, capacity_kw=cap, term_months=term,
+            interest_rate=rate, down_payment_pct=dp_pct, total_amount=total,
+        ))
+    await db.commit()

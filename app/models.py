@@ -123,7 +123,7 @@ class Contract(Base):
     approved_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
 
-    customer = relationship("Customer", back_populates="contracts")
+    customer = relationship("Customer", back_populates="contracts", lazy="selectin")
     schedules = relationship("RepaymentSchedule", back_populates="contract",
                              lazy="selectin", cascade="all, delete-orphan")
 
