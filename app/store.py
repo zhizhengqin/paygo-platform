@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
     Customer, Token, PaymentRate, SmsRecord, LoanProduct, Contract,
-    RepaymentSchedule, _new_id,
+    RepaymentSchedule, RepaymentRecord, _new_id,
 )
 from app.security import encrypt_secret, decrypt_secret
 
@@ -581,3 +581,177 @@ async def migrate_secret_keys_to_encrypted(db: AsyncSession) -> int:
     if count > 0:
         await db.commit()
     return count
+
+
+# ============================================================
+# 还款记录 + 还款标记 + 逾期检测 + 结清
+# ============================================================
+
+async def mark_schedule_paid(
+    db: AsyncSession, schedule_id: str, amount: Decimal,
+) -> dict | None:
+    """标记一期还款为已付：检查状态 → 生成 Token → 创建还款记录 → 更新状态"""
+    rs_result = await db.execute(
+        select(RepaymentSchedule).where(RepaymentSchedule.id == schedule_id)
+    )
+    rs = rs_result.scalar()
+    if not rs or rs.status == "paid":
+        return None
+
+    ct = await db.get(Contract, rs.contract_id)
+    if not ct:
+        return None
+    customer = await db.get(Customer, ct.customer_id)
+    if not customer:
+        return None
+
+    raw_key = decrypt_secret(customer.secret_key_encrypted) if customer.secret_key_encrypted else customer.secret_key
+    if not raw_key:
+        return None
+
+    from openpaygo import generate_token, TokenType
+    new_count, token_str = generate_token(
+        secret_key=raw_key,
+        count=customer.count,
+        value=30,
+        token_type=TokenType.ADD_TIME,
+    )
+
+    customer.count = new_count
+    customer.status = "active"
+
+    tid = _new_id("T")
+    t = Token(
+        id=tid, customer_id=customer.id, token=token_str, days=30,
+        count=new_count, amount=amount, contract_id=ct.id,
+    )
+    db.add(t)
+    await db.flush()  # 先刷入 Token 以便 RepaymentRecord FK 引用
+
+    rrid = _new_id("RR")
+    rr = RepaymentRecord(
+        id=rrid, contract_id=ct.id, schedule_id=rs.id, token_id=tid,
+        amount=amount, payment_method="Bakong",
+    )
+    db.add(rr)
+
+    rs.status = "paid"
+    await db.commit()
+
+    return {
+        "id": rrid,
+        "contract_id": ct.id,
+        "schedule_id": rs.id,
+        "token_id": tid,
+        "token": token_str,
+        "amount": float(amount),
+        "paid_at": rr.paid_at.strftime("%Y-%m-%d %H:%M:%S") if rr.paid_at else None,
+    }
+
+
+async def check_overdue_schedules(db: AsyncSession) -> int:
+    """检查逾期未付的还款计划 → 标记 overdue → 合同联动 → 设备锁定"""
+    from datetime import date
+    today = date.today()
+
+    result = await db.execute(
+        select(RepaymentSchedule).where(
+            RepaymentSchedule.status == "pending",
+            RepaymentSchedule.due_date < today,
+        )
+    )
+    overdue_schedules = result.scalars().all()
+
+    affected_contracts = set()
+    for rs in overdue_schedules:
+        rs.status = "overdue"
+        affected_contracts.add(rs.contract_id)
+
+    for ct_id in affected_contracts:
+        ct = await db.get(Contract, ct_id)
+        if ct and ct.status == "active":
+            ct.status = "overdue"
+            customer = await db.get(Customer, ct.customer_id)
+            if customer:
+                customer.status = "locked"
+                customer.locked_at = datetime.now()
+
+    if overdue_schedules:
+        await db.commit()
+
+    return len(overdue_schedules)
+
+
+async def settle_contract(db: AsyncSession, cid: str) -> dict | None:
+    """结清合同：生成 DISABLE_PAYG Token → 标记所有计划已付 → 永久解锁"""
+    ct = await db.get(Contract, cid)
+    if not ct or ct.status not in ("active", "overdue"):
+        return None
+
+    customer = await db.get(Customer, ct.customer_id)
+    if not customer:
+        return None
+
+    raw_key = decrypt_secret(customer.secret_key_encrypted) if customer.secret_key_encrypted else customer.secret_key
+    if not raw_key:
+        return None
+
+    from openpaygo import generate_token, TokenType
+    new_count, token_str = generate_token(
+        secret_key=raw_key,
+        count=customer.count,
+        token_type=TokenType.DISABLE_PAYG,
+    )
+
+    customer.count = new_count
+    customer.status = "permanent"
+
+    tid = _new_id("T")
+    t = Token(
+        id=tid, customer_id=customer.id, token=token_str, days=-1,
+        count=new_count, amount=0, contract_id=ct.id,
+    )
+    db.add(t)
+    await db.flush()  # 先刷入 Token 以便 RepaymentRecord FK 引用
+
+    # Mark all unpaid schedules as paid
+    schedules_result = await db.execute(
+        select(RepaymentSchedule).where(
+            RepaymentSchedule.contract_id == cid,
+            RepaymentSchedule.status != "paid",
+        )
+    )
+    unpaid_schedules = schedules_result.scalars().all()
+    first_schedule_id = unpaid_schedules[0].id if unpaid_schedules else None
+    for rs in unpaid_schedules:
+        rs.status = "paid"
+
+    # Create repayment record
+    rrid = _new_id("RR")
+    rr = RepaymentRecord(
+        id=rrid, contract_id=ct.id, schedule_id=first_schedule_id,
+        token_id=tid, amount=ct.loan_amount, payment_method="SETTLEMENT",
+    )
+    db.add(rr)
+
+    ct.status = "closed"
+    ct.remaining_days = 0
+
+    message = (
+        f"[PAYGO Solar] 恭喜！您的贷款已全部结清。"
+        f"设备永久解锁码：{token_str}。请在您的设备中输入此码以永久解锁。"
+    )
+
+    # Record SMS
+    sms_id = _new_id("S")
+    sms = SmsRecord(id=sms_id, customer_id=customer.id, to_phone=customer.phone, message=message)
+    db.add(sms)
+
+    await db.commit()
+
+    return {
+        "contract_id": cid,
+        "status": "closed",
+        "token": token_str,
+        "sms": {"to": customer.phone, "message": message},
+    }

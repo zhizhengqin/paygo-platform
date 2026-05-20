@@ -344,3 +344,110 @@ class TestGenerateContractNo:
         assert len(parts) == 3
         assert len(parts[2]) == 5
         assert int(parts[1]) == 2026
+
+
+from app.store import (
+    mark_schedule_paid, check_overdue_schedules, settle_contract,
+)
+
+
+class TestRepaymentFlow:
+    """还款闭环测试"""
+
+    async def test_mark_schedule_paid_generates_token_and_record(self, session):
+        """标记一期还款为已付：创建还款记录 + 生成 Token + 更新计划状态"""
+        from app.security import init_fernet
+        init_fernet()
+
+        pid = await add_loan_product(
+            session, "6kW-12月", Decimal("6.00"), 12,
+            Decimal("10.00"), Decimal("20.00"), Decimal("690.00"),
+        )
+        cid = await add_customer(session, "Test", "+855111", "DEV-T1", "a" * 32)
+        ct_id = await add_contract(
+            session, cid, pid, Decimal("138.00"), Decimal("552.00"),
+            Decimal("46.00"), date(2026, 1, 1), date(2027, 1, 1),
+        )
+        result = await approve_contract(session, ct_id)
+        schedule_id = result["schedules"][0]["id"]
+
+        rr = await mark_schedule_paid(session, schedule_id, amount=Decimal("43.31"))
+        assert rr is not None
+        assert rr["schedule_id"] == schedule_id
+        assert rr["amount"] == 43.31
+        assert rr["token"] is not None
+        assert len(rr["token"]) == 9
+
+        from app.store import get_contract_with_schedules
+        ct = await get_contract_with_schedules(session, ct_id)
+        assert ct["schedules"][0]["status"] == "paid"
+
+    async def test_mark_schedule_paid_already_paid_returns_none(self, session):
+        """已还款的期数不可重复还款"""
+        from app.security import init_fernet
+        init_fernet()
+
+        pid = await add_loan_product(
+            session, "6kW-12月", Decimal("6.00"), 12,
+            Decimal("10.00"), Decimal("20.00"), Decimal("690.00"),
+        )
+        cid = await add_customer(session, "Test2", "+855222", "DEV-T2", "a" * 32)
+        ct_id = await add_contract(
+            session, cid, pid, Decimal("138.00"), Decimal("552.00"),
+            Decimal("46.00"), date(2026, 1, 1), date(2027, 1, 1),
+        )
+        result = await approve_contract(session, ct_id)
+        schedule_id = result["schedules"][0]["id"]
+
+        rr1 = await mark_schedule_paid(session, schedule_id, amount=Decimal("43.31"))
+        assert rr1 is not None
+        rr2 = await mark_schedule_paid(session, schedule_id, amount=Decimal("43.31"))
+        assert rr2 is None
+
+    async def test_check_overdue_finds_unpaid_past_due(self, session):
+        """逾期检测：到期未付的计划被标记为 overdue，合同状态联动"""
+        from app.security import init_fernet
+        init_fernet()
+
+        pid = await add_loan_product(
+            session, "6kW-12月", Decimal("6.00"), 12,
+            Decimal("10.00"), Decimal("20.00"), Decimal("690.00"),
+        )
+        cid = await add_customer(session, "Test3", "+855333", "DEV-T3", "a" * 32)
+        ct_id = await add_contract(
+            session, cid, pid, Decimal("138.00"), Decimal("552.00"),
+            Decimal("46.00"), date(2025, 1, 1), date(2026, 1, 1),
+        )
+        await approve_contract(session, ct_id)
+
+        count = await check_overdue_schedules(session)
+        assert count > 0
+
+        from app.store import get_contract
+        ct = await get_contract(session, ct_id)
+        assert ct["status"] == "overdue"
+
+    async def test_settle_contract_generates_disable_token(self, session):
+        """结清合同：生成 DISABLE_PAYG Token，合同 closed，客户 permanent"""
+        from app.security import init_fernet
+        init_fernet()
+
+        pid = await add_loan_product(
+            session, "6kW-12月", Decimal("6.00"), 12,
+            Decimal("10.00"), Decimal("20.00"), Decimal("690.00"),
+        )
+        cid = await add_customer(session, "Test4", "+855444", "DEV-T4", "a" * 32)
+        ct_id = await add_contract(
+            session, cid, pid, Decimal("138.00"), Decimal("552.00"),
+            Decimal("46.00"), date(2026, 1, 1), date(2027, 1, 1),
+        )
+        await approve_contract(session, ct_id)
+
+        result = await settle_contract(session, ct_id)
+        assert result is not None
+        assert result["status"] == "closed"
+        assert result["token"] is not None
+
+        from app.store import get_customer
+        c = await get_customer(session, cid)
+        assert c["status"] == "permanent"
