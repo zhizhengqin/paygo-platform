@@ -1127,3 +1127,127 @@ def _alert_to_dict(a: Alert) -> dict:
             "resolved_at": a.resolved_at.strftime("%Y-%m-%d %H:%M:%S") if a.resolved_at else None,
             "resolution_note": a.resolution_note,
             "triggered_at": a.triggered_at.strftime("%Y-%m-%d %H:%M:%S") if a.triggered_at else None}
+
+
+# ============================================================
+# 增强仪表盘统计 (Phase 5)
+# ============================================================
+
+async def get_enhanced_dashboard_stats(db: AsyncSession, days: int = 30, mfi_id: str = None) -> dict:
+    """增强仪表盘：KPI + 收入趋势 + Token趋势 + 告警统计"""
+    from datetime import date
+
+    today = date.today()
+    days_ago = today - timedelta(days=days)
+
+    # ---- 基础 KPI ----
+    total_customers_r = await db.execute(select(func.count()).select_from(Customer))
+    total_customers = total_customers_r.scalar() or 0
+
+    active_r = await db.execute(select(func.count()).select_from(Customer).where(Customer.status == "active"))
+    active_devices = active_r.scalar() or 0
+
+    locked_r = await db.execute(select(func.count()).select_from(Customer).where(Customer.status == "locked"))
+    locked_devices = locked_r.scalar() or 0
+
+    permanent_r = await db.execute(select(func.count()).select_from(Customer).where(Customer.status == "permanent"))
+    permanent_devices = permanent_r.scalar() or 0
+
+    month_start = today.replace(day=1)
+    revenue_r = await db.execute(
+        select(func.coalesce(func.sum(Token.amount), 0)).where(Token.generated_at >= month_start)
+    )
+    monthly_revenue = float(revenue_r.scalar() or 0)
+
+    # Token 生成成功率（有 Token 记录的支付比例）
+    token_total_r = await db.execute(select(func.count()).select_from(Token))
+    token_total = token_total_r.scalar() or 1  # avoid div by zero
+    token_month_r = await db.execute(
+        select(func.count()).select_from(Token).where(Token.generated_at >= month_start)
+    )
+    token_month = token_month_r.scalar() or 0
+
+    # 逾期率：locked / (active + locked)
+    total_active_locked = active_devices + locked_devices
+    overdue_rate = round(locked_devices / total_active_locked * 100, 1) if total_active_locked > 0 else 0
+
+    # 合同统计
+    contracts_total_r = await db.execute(select(func.count()).select_from(Contract))
+    contracts_total = contracts_total_r.scalar() or 0
+    contracts_active_r = await db.execute(
+        select(func.count()).select_from(Contract).where(Contract.status == "active")
+    )
+    contracts_active = contracts_active_r.scalar() or 0
+
+    # ---- 收入趋势 (近N天每日) ----
+    revenue_trend = []
+    for i in range(days):
+        d = days_ago + timedelta(days=i + 1)
+        day_start = datetime.combine(d, datetime.min.time())
+        day_end = datetime.combine(d + timedelta(days=1), datetime.min.time())
+        day_rev = await db.execute(
+            select(func.coalesce(func.sum(Token.amount), 0)).where(
+                Token.generated_at >= day_start, Token.generated_at < day_end
+            )
+        )
+        revenue_trend.append({"date": d.strftime("%m-%d"), "amount": float(day_rev.scalar() or 0)})
+
+    # ---- Token 生成趋势 (近N天每日) ----
+    token_trend = []
+    for i in range(days):
+        d = days_ago + timedelta(days=i + 1)
+        day_start = datetime.combine(d, datetime.min.time())
+        day_end = datetime.combine(d + timedelta(days=1), datetime.min.time())
+        day_count = await db.execute(
+            select(func.count()).select_from(Token).where(
+                Token.generated_at >= day_start, Token.generated_at < day_end
+            )
+        )
+        token_trend.append({"date": d.strftime("%m-%d"), "count": day_count.scalar() or 0})
+
+    # ---- 告警统计 ----
+    alert_total_r = await db.execute(select(func.count()).select_from(Alert))
+    alert_total = alert_total_r.scalar() or 0
+    alert_pending_r = await db.execute(
+        select(func.count()).select_from(Alert).where(Alert.status == "pending")
+    )
+    alert_pending = alert_pending_r.scalar() or 0
+    # 按级别统计
+    p0_r = await db.execute(select(func.count()).select_from(Alert).where(Alert.level == "P0"))
+    p1_r = await db.execute(select(func.count()).select_from(Alert).where(Alert.level == "P1"))
+    p2_r = await db.execute(select(func.count()).select_from(Alert).where(Alert.level == "P2"))
+    alert_by_level = {"P0": p0_r.scalar() or 0, "P1": p1_r.scalar() or 0, "P2": p2_r.scalar() or 0}
+
+    # 近7天告警趋势
+    alert_trend = []
+    for i in range(7):
+        d = today - timedelta(days=6 - i)
+        day_start = datetime.combine(d, datetime.min.time())
+        day_end = datetime.combine(d + timedelta(days=1), datetime.min.time())
+        day_alerts = await db.execute(
+            select(func.count()).select_from(Alert).where(
+                Alert.triggered_at >= day_start, Alert.triggered_at < day_end
+            )
+        )
+        alert_trend.append({"date": d.strftime("%m-%d"), "count": day_alerts.scalar() or 0})
+
+    return {
+        "kpi": {
+            "total_customers": total_customers,
+            "active_devices": active_devices,
+            "locked_devices": locked_devices,
+            "permanent_devices": permanent_devices,
+            "monthly_revenue": monthly_revenue,
+            "token_month": token_month,
+            "token_total": token_total,
+            "overdue_rate": overdue_rate,
+            "contracts_total": contracts_total,
+            "contracts_active": contracts_active,
+            "alert_total": alert_total,
+            "alert_pending": alert_pending,
+        },
+        "revenue_trend": revenue_trend,
+        "token_trend": token_trend,
+        "alert_by_level": alert_by_level,
+        "alert_trend": alert_trend,
+    }
