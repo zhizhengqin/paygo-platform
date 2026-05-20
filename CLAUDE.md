@@ -92,8 +92,17 @@
 - Redis 缓存（TTL 5min）
 - 200 tests
 
-### Phase 6-8：设备地图 → 报表中心 → 系统设置
-- 详见升级计划 Phase 6-8
+### Phase 6：设备地图 ✅ 已完成 2026-05-20
+- **导航 tab**：新增「设备地图」（第 6 个 tab）
+- Leaflet.js + OpenStreetMap 柬埔寨全境地图
+- 颜色标注：绿(活跃)/红(逾期)/黄(永久解锁) circleMarker
+- 图层切换：全部/活跃/逾期锁定/永久解锁 按钮
+- 搜索定位：序列号/客户名搜索 + 自动聚焦 zoom 14
+- API：GET /api/devices/geo（依赖 Phase 3 GPS 字段）
+- 200 tests
+
+### Phase 7-8：报表中心 → 系统设置
+- 详见升级计划 Phase 7-8
 
 ### 原型阶段暂不做
 - M2 Bakong 支付、M3 SMS 网关、M4 设备控制器（均需外部系统对接，仅模拟）
