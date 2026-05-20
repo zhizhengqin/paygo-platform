@@ -1,0 +1,3 @@
+[   52587ms] ReferenceError: escapeHtml is not defined
+    at renderController (http://localhost:8000/controller:134:53)
+    at HTMLSelectElement.onDeviceSelect (http://localhost:8000/controller:123:3)

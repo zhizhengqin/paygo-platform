@@ -1,0 +1,97 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - generic [ref=e7]:
+      - link "📱 设备模拟器" [ref=e8] [cursor=pointer]:
+        - /url: /controller
+      - link "退出" [ref=e9] [cursor=pointer]:
+        - /url: /logout
+  - navigation [ref=e10]:
+    - generic [ref=e11] [cursor=pointer]: 运营仪表盘
+    - generic [ref=e12] [cursor=pointer]: 客户管理
+    - generic [ref=e13] [cursor=pointer]: 合同管理
+    - generic [ref=e14] [cursor=pointer]: Token 管理
+    - generic [ref=e15] [cursor=pointer]: 告警中心
+    - generic [ref=e16] [cursor=pointer]: 设备地图
+    - generic [ref=e17] [cursor=pointer]: 报表中心
+    - generic [ref=e18] [cursor=pointer]: 系统设置
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - heading "运营仪表盘" [level=2] [ref=e23]
+        - generic [ref=e24]:
+          - combobox [ref=e25]:
+            - option "全部 MFI" [selected]
+            - option "LOLC"
+            - option "LOLC Cambodia"
+            - option "PRASAC"
+          - generic [ref=e26]:
+            - button "7天" [ref=e27] [cursor=pointer]
+            - button "30天" [ref=e28] [cursor=pointer]
+            - button "90天" [ref=e29] [cursor=pointer]
+      - generic [ref=e30]:
+        - generic [ref=e31]:
+          - generic [ref=e32]: "4"
+          - generic [ref=e33]: 总客户数
+        - generic [ref=e34]:
+          - generic [ref=e35]: "2"
+          - generic [ref=e36]: 活跃设备
+        - generic [ref=e37]:
+          - generic [ref=e38]: $205
+          - generic [ref=e39]: 本月收入 (USD)
+        - generic [ref=e40]:
+          - generic [ref=e41]: "2"
+          - generic [ref=e42]: 逾期锁定 (50%)
+        - generic [ref=e43]:
+          - generic [ref=e44]: "4"
+          - generic [ref=e45]: 本月 Token 生成
+        - generic [ref=e46]:
+          - generic [ref=e47]: "2"
+          - generic [ref=e48]: 执行中合同
+        - generic [ref=e49]:
+          - generic [ref=e50]: "0"
+          - generic [ref=e51] [cursor=pointer]: 待处理告警
+        - generic [ref=e52]:
+          - generic [ref=e53]: 50%
+          - generic [ref=e54]: 逾期率
+      - generic [ref=e55]:
+        - heading "收入趋势 (近30天)" [level=4] [ref=e57]
+        - heading "Token 生成趋势" [level=4] [ref=e63]
+      - generic [ref=e68]:
+        - heading "告警级别分布" [level=4] [ref=e70]
+        - heading "近7天告警趋势" [level=4] [ref=e76]
+      - generic [ref=e81]:
+        - heading "设备状态分布" [level=4] [ref=e83]
+        - generic [ref=e88]:
+          - heading "最近交易" [level=4] [ref=e89]
+          - table [ref=e90]:
+            - rowgroup [ref=e91]:
+              - row "时间 客户 金额 天数" [ref=e92]:
+                - columnheader "时间" [ref=e93]
+                - columnheader "客户" [ref=e94]
+                - columnheader "金额" [ref=e95]
+                - columnheader "天数" [ref=e96]
+            - rowgroup [ref=e97]:
+              - row "2026-05-20 17:05:22 Bob $57.50 30天" [ref=e98]:
+                - cell "2026-05-20 17:05:22" [ref=e99]
+                - cell "Bob" [ref=e100]
+                - cell "$57.50" [ref=e101]
+                - cell "30天" [ref=e102]
+              - row "2026-05-20 17:05:21 Alice $52.58 30天" [ref=e103]:
+                - cell "2026-05-20 17:05:21" [ref=e104]
+                - cell "Alice" [ref=e105]
+                - cell "$52.58" [ref=e106]
+                - cell "30天" [ref=e107]
+              - row "2026-05-20 17:05:21 Sok Heng $47.33 30天" [ref=e108]:
+                - cell "2026-05-20 17:05:21" [ref=e109]
+                - cell "Sok Heng" [ref=e110]
+                - cell "$47.33" [ref=e111]
+                - cell "30天" [ref=e112]
+              - row "2026-05-20 17:05:21 Sok Heng $47.33 30天" [ref=e113]:
+                - cell "2026-05-20 17:05:21" [ref=e114]
+                - cell "Sok Heng" [ref=e115]
+                - cell "$47.33" [ref=e116]
+                - cell "30天" [ref=e117]

@@ -1,0 +1,12 @@
+- generic [ref=e3]:
+  - img "新华智科技" [ref=e4]
+  - heading "太阳能即付即用系统" [level=1] [ref=e5]
+  - paragraph [ref=e6]: 账户已被锁定，请 847 秒后重试
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]: 用户名
+      - textbox "请输入用户名" [ref=e10]: admin
+    - generic [ref=e11]:
+      - generic [ref=e12]: 密码
+      - textbox "请输入密码" [ref=e13]: admin123
+    - button "登 录" [ref=e14] [cursor=pointer]

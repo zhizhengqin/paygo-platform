@@ -54,6 +54,13 @@
 </div>
 
 <script>
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 let currentDevice = null;
 
 async function loadDeviceList() {
@@ -142,8 +149,7 @@ async function submitToken() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         customer_id: currentDevice.id,
-        token: token,
-        count: currentDevice.count
+        token: token
       })
     });
     const data = await resp.json();
@@ -175,15 +181,26 @@ async function resetDevice() {
   renderController();
 }
 
-// Auto-init if logged in
-if (document.cookie.includes('session') || document.cookie.includes('access_token')) {
-  loadDeviceList();
-} else {
-  document.getElementById('ctrlScreen').innerHTML = `
-    <div style="text-align:center;padding:40px;color:#64748b;">
-      <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-      <p>请先<a href="/login" style="color:#10b981;">登录</a>平台</p>
-    </div>`;
-}
+// Auto-init: try loading devices, show login prompt if unauthorized
+(async function init() {
+  try {
+    const resp = await fetch('/api/devices/geo');
+    if (resp.status === 401 || resp.status === 403) {
+      document.getElementById('ctrlScreen').innerHTML = `
+        <div style="text-align:center;padding:40px;color:#64748b;">
+          <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+          <p>请先<a href="/login" style="color:#10b981;">登录</a>平台</p>
+        </div>`;
+      return;
+    }
+    loadDeviceList();
+  } catch(e) {
+    document.getElementById('ctrlScreen').innerHTML = `
+      <div style="text-align:center;padding:40px;color:#ef4444;">
+        <div style="font-size:48px;margin-bottom:12px;">⚠</div>
+        <p>无法连接服务器</p>
+      </div>`;
+  }
+})();
 </script>
 {% endblock %}
