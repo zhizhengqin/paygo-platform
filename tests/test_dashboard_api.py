@@ -18,9 +18,12 @@ async def manage_infra():
 @pytest.fixture(autouse=True)
 async def clean_db():
     async with AsyncSessionLocal() as db:
+        await db.execute(text("DELETE FROM repayment_schedules"))
+        await db.execute(text("DELETE FROM contracts"))
         await db.execute(text("DELETE FROM sms_records"))
         await db.execute(text("DELETE FROM tokens"))
         await db.execute(text("DELETE FROM customers"))
+        await db.execute(text("DELETE FROM loan_products"))
         await db.commit()
 
 

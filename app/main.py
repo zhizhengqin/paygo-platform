@@ -8,11 +8,12 @@ from fastapi.templating import Jinja2Templates
 from app.models import Base
 from app.database import engine, get_db
 from app.redis import init_redis, close_redis
-from app.store import seed_payment_rates
+from app.store import seed_payment_rates, seed_loan_products
 from app.routers.auth import router as auth_router
 from app.routers.customers import router as customers_router
 from app.routers.config import router as config_router
 from app.routers.dashboard import router as dashboard_router
+from app.routers.contracts import router as contracts_router
 
 
 @asynccontextmanager
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
     from app.database import AsyncSessionLocal
     async with AsyncSessionLocal() as db:
         await seed_payment_rates(db)
+        await seed_loan_products(db)
     yield
     # 关闭：释放连接池 + 关闭 Redis
     await engine.dispose()
@@ -45,6 +47,7 @@ app.include_router(auth_router)
 app.include_router(customers_router)
 app.include_router(config_router)
 app.include_router(dashboard_router)
+app.include_router(contracts_router)
 
 
 @app.get("/dashboard")
