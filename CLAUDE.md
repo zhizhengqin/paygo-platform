@@ -101,8 +101,26 @@
 - API：GET /api/devices/geo（依赖 Phase 3 GPS 字段）
 - 200 tests
 
-### Phase 7-8：报表中心 → 系统设置
-- 详见升级计划 Phase 7-8
+### Phase 7：报表中心 ✅ 已完成 2026-05-20
+- **导航 tab**：新增「报表中心」（第 7 个 tab）
+- 报表汇总：日期范围查询（新增客户/收入/Token/合同/告警/逾期率）
+- ESG 碳减排：CO₂ 减排量（吨）= Token天数 × 20kWh/天 × 0.0007 tCO₂/kWh
+- CSV 导出：StreamingResponse 下载
+- 新增：app/routers/reports.py
+
+### Phase 8：系统设置 ✅ 已完成 2026-05-20
+- **导航 tab**：新增「系统设置」（第 8 个 tab，最后一个）
+- 系统健康检查：DB + Redis 连通性
+- 支付汇率管理：金额→天数映射 UI
+- MFI 机构管理：增删查 UI
+- 用户管理：RBAC 角色（super_admin/ops_manager/ops_staff/tech_support/readonly）
+- 新增模型：User, SmsTemplate（16 张表总计）
+- 新增：app/routers/settings.py
+
+### 全部 8 个 Tab 导航结构
+```
+运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置
+```
 
 ### 原型阶段暂不做
 - M2 Bakong 支付、M3 SMS 网关、M4 设备控制器（均需外部系统对接，仅模拟）
@@ -115,8 +133,8 @@
 - 缓存：Redis 8（session 管理 + API 响应缓存 + Token 防重放）
 - Token 生成：OpenPAYGO 标准 >=0.6.3（SipHash-2-4 哈希链，9 位纯数字，ADD_TIME / DISABLE_PAYG）
 - 安全：bcrypt（密码哈希）+ Fernet（设备密钥对称加密）+ Redis 滑动窗口限流
-- ORM：SQLAlchemy 2.0 async，**14 张表**（+alert_rules/alerts/alert_logs）
-- 测试：pytest-asyncio，**198 个测试**，真实测试数据库隔离
+- ORM：SQLAlchemy 2.0 async，**16 张表**（+users/sms_templates）
+- 测试：pytest-asyncio，**200 个测试**，真实测试数据库隔离
 
 ## Superpowers 框架配置
 - 强制使用TDD：所有功能必须先写测试再写实现
