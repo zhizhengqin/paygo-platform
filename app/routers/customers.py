@@ -7,7 +7,7 @@ from app.store import (
     get_customers, get_customer as store_get_customer,
     add_customer as store_add_customer, delete_customer as store_delete_customer,
     set_customer_count, update_customer_status,
-    get_tokens, add_token,
+    add_token,
     add_sms_record, get_sms_records, get_days_for_amount,
     DuplicateDeviceError, DuplicateSecretKeyError,
 )
@@ -159,15 +159,7 @@ async def generate_token_for_customer(request: Request, customer_id: str,
     return {"token": token_str, "customer_id": customer_id, "days": body.days}
 
 
-@router.get("/tokens")
-async def list_tokens(request: Request, db: AsyncSession = Depends(get_db)):
-    await _check_auth(request)
-    cached = await cache_get("tokens:list")
-    if cached:
-        return cached
-    result = await get_tokens(db)
-    await cache_set("tokens:list", result)
-    return result
+# Token 列表端点已迁移至 app/routers/tokens.py
 
 
 @router.post("/customers/{customer_id}/simulate-payment")
