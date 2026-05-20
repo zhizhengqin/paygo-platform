@@ -8,7 +8,8 @@ from fastapi.templating import Jinja2Templates
 from app.models import Base
 from app.database import engine, get_db
 from app.redis import init_redis, close_redis
-from app.store import seed_payment_rates, seed_loan_products
+from app.security import init_fernet
+from app.store import seed_payment_rates, seed_loan_products, migrate_secret_keys_to_encrypted
 from app.routers.auth import router as auth_router
 from app.routers.customers import router as customers_router
 from app.routers.config import router as config_router
@@ -26,12 +27,23 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(lambda c: c.execute(text(
             "ALTER TABLE tokens ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2) DEFAULT 0"
         )))
+        await conn.run_sync(lambda c: c.execute(text(
+            "ALTER TABLE customers ADD COLUMN IF NOT EXISTS secret_key_encrypted TEXT"
+        )))
+        await conn.run_sync(lambda c: c.execute(text(
+            "ALTER TABLE customers ALTER COLUMN secret_key DROP NOT NULL"
+        )))
     await init_redis()
+    init_fernet()
     # 种子支付汇率
     from app.database import AsyncSessionLocal
     async with AsyncSessionLocal() as db:
         await seed_payment_rates(db)
         await seed_loan_products(db)
+        migrated = await migrate_secret_keys_to_encrypted(db)
+        if migrated > 0:
+            import logging
+            logging.getLogger("paygo").info(f"Migrated {migrated} secret keys to encrypted storage")
     yield
     # 关闭：释放连接池 + 关闭 Redis
     await engine.dispose()

@@ -11,6 +11,7 @@ from app.models import (
     Customer, Token, PaymentRate, SmsRecord, LoanProduct, Contract,
     RepaymentSchedule, _new_id,
 )
+from app.security import encrypt_secret, decrypt_secret
 
 
 class DuplicateDeviceError(Exception):
@@ -46,15 +47,26 @@ async def add_customer(db: AsyncSession, name: str, phone: str,
     if existing.scalar():
         raise DuplicateDeviceError(device_id)
 
-    # 检查 secret_key 唯一绑定
+    # 检查 secret_key 唯一绑定（同时检查明文和加密列）
     existing = await db.execute(
         select(Customer).where(Customer.secret_key == secret_key)
     )
     if existing.scalar():
         raise DuplicateSecretKeyError(secret_key)
+    # 加密列逐条解密比对
+    all_customers = await db.execute(
+        select(Customer).where(Customer.secret_key_encrypted.isnot(None))
+    )
+    for c in all_customers.scalars().all():
+        if decrypt_secret(c.secret_key_encrypted) == secret_key:
+            raise DuplicateSecretKeyError(secret_key)
 
     cid = _new_id("C")
-    c = Customer(id=cid, name=name, phone=phone, device_id=device_id, secret_key=secret_key)
+    encrypted = encrypt_secret(secret_key)
+    c = Customer(
+        id=cid, name=name, phone=phone, device_id=device_id,
+        secret_key_encrypted=encrypted,
+    )
     db.add(c)
     await db.commit()
     return cid
@@ -161,7 +173,7 @@ def _customer_to_dict(c: Customer) -> dict:
         "name": c.name,
         "phone": c.phone,
         "device_id": c.device_id,
-        "secret_key": c.secret_key,
+        "secret_key": decrypt_secret(c.secret_key_encrypted) if c.secret_key_encrypted else (c.secret_key or ""),
         "count": c.count,
         "status": c.status,
         "created_at": c.created_at.strftime("%Y-%m-%d") if c.created_at else None,
@@ -546,3 +558,26 @@ async def seed_loan_products(db: AsyncSession):
             interest_rate=rate, down_payment_pct=dp_pct, total_amount=total,
         ))
     await db.commit()
+
+
+async def migrate_secret_keys_to_encrypted(db: AsyncSession) -> int:
+    """将现有明文 secret_key 迁移至 secret_key_encrypted 列。返回迁移条数。"""
+    from sqlalchemy import and_
+    result = await db.execute(
+        select(Customer).where(
+            and_(
+                Customer.secret_key.isnot(None),
+                Customer.secret_key_encrypted.is_(None),
+            )
+        )
+    )
+    customers = result.scalars().all()
+    count = 0
+    for c in customers:
+        if c.secret_key:
+            c.secret_key_encrypted = encrypt_secret(c.secret_key)
+            c.secret_key = None
+            count += 1
+    if count > 0:
+        await db.commit()
+    return count

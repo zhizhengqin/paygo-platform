@@ -23,7 +23,8 @@ class Customer(Base):
     name = Column(String(100), nullable=False)
     phone = Column(String(20), nullable=False, index=True)
     device_id = Column(String(50), nullable=False, unique=True)
-    secret_key = Column(String(64), nullable=False, unique=True)
+    secret_key = Column(String(64), nullable=True)  # 改为可空，迁移后废弃
+    secret_key_encrypted = Column(Text, nullable=True)  # Fernet 加密密文
     count = Column(Integer, default=0)
     status = Column(String(20), default="locked")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())

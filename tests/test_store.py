@@ -186,3 +186,55 @@ class TestSmsRecords:
         await add_sms_record(session, cid2, "0888888002", "msg2")
         records = await get_sms_records(session)
         assert len(records) == 2
+
+
+class TestSecretKeyEncryption:
+    async def test_add_customer_encrypts_secret_key(self, session):
+        """新增客户时 secret_key_encrypted 不为空，且不同于原始值。"""
+        from app.store import add_customer
+        from app.models import Customer
+        from sqlalchemy import select
+        from app.security import init_fernet
+        init_fernet()
+
+        cid = await add_customer(session, "Test", "+855123", "DEV-ENC01", "a" * 32)
+        result = await session.execute(select(Customer).where(Customer.id == cid))
+        c = result.scalar()
+        assert c.secret_key_encrypted is not None
+        assert c.secret_key_encrypted != "a" * 32
+        assert c.secret_key is None
+
+    async def test_get_customer_returns_decrypted_key(self, session):
+        """获取客户时 secret_key 被正确解密返回。"""
+        from app.store import add_customer, get_customer
+        from app.security import init_fernet
+        init_fernet()
+
+        cid = await add_customer(session, "Test2", "+855456", "DEV-ENC02", "b" * 32)
+        c = await get_customer(session, cid)
+        assert c["secret_key"] == "b" * 32
+
+    async def test_migrate_secret_keys(self, session):
+        """迁移函数将明文列加密后置空。"""
+        from app.store import migrate_secret_keys_to_encrypted
+        from app.models import Customer, _new_id
+        from sqlalchemy import select
+        from app.security import init_fernet
+        init_fernet()
+
+        c = Customer(
+            id=_new_id("C"), name="Legacy", phone="+855789",
+            device_id="DEV-LEGACY01", secret_key="c" * 32,
+        )
+        session.add(c)
+        await session.commit()
+
+        count = await migrate_secret_keys_to_encrypted(session)
+        assert count == 1
+
+        result = await session.execute(
+            select(Customer).where(Customer.device_id == "DEV-LEGACY01")
+        )
+        c2 = result.scalar()
+        assert c2.secret_key_encrypted is not None
+        assert c2.secret_key is None
