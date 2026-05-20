@@ -62,6 +62,30 @@ async def lifespan(app: FastAPI):
             await conn.run_sync(lambda c, col=col, col_type=col_type: c.execute(text(
                 f"ALTER TABLE customers ADD COLUMN IF NOT EXISTS {col} {col_type}"
             )))
+        # Phase 4 — 告警相关表
+        await conn.run_sync(lambda c: c.execute(text(
+            """CREATE TABLE IF NOT EXISTS alert_rules (
+                id VARCHAR(8) PRIMARY KEY, code VARCHAR(20) UNIQUE NOT NULL,
+                name VARCHAR(100) NOT NULL, description TEXT, level VARCHAR(4) DEFAULT 'P2',
+                sla_hours INTEGER DEFAULT 24, enabled BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )""")))
+        await conn.run_sync(lambda c: c.execute(text(
+            """CREATE TABLE IF NOT EXISTS alerts (
+                id VARCHAR(8) PRIMARY KEY, rule_code VARCHAR(20),
+                contract_id VARCHAR(8), customer_id VARCHAR(8),
+                level VARCHAR(4) DEFAULT 'P2', status VARCHAR(20) DEFAULT 'pending',
+                title VARCHAR(200) NOT NULL, detail TEXT,
+                triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                claimed_by VARCHAR(100), claimed_at TIMESTAMP WITH TIME ZONE,
+                resolved_at TIMESTAMP WITH TIME ZONE, resolution_note TEXT
+            )""")))
+        await conn.run_sync(lambda c: c.execute(text(
+            """CREATE TABLE IF NOT EXISTS alert_logs (
+                id VARCHAR(8) PRIMARY KEY, alert_id VARCHAR(8),
+                action VARCHAR(50) NOT NULL, operator VARCHAR(100),
+                note TEXT, created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )""")))
     await init_redis()
     init_fernet()
     # 种子支付汇率

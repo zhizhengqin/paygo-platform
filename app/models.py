@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from sqlalchemy import (
-    Column, String, Integer, Numeric, Text, Date, DateTime, ForeignKey, JSON, Index,
+    Column, String, Integer, Numeric, Text, Date, DateTime, ForeignKey, JSON, Index, Boolean,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -184,3 +184,48 @@ class RepaymentRecord(Base):
     amount = Column(Numeric(10, 2), nullable=False)
     payment_method = Column(String(20), default="Bakong")
     paid_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+
+
+class AlertRule(Base):
+    """告警规则"""
+    __tablename__ = "alert_rules"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("AR"))
+    code = Column(String(20), nullable=False, unique=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    level = Column(String(4), nullable=False, default="P2")
+    sla_hours = Column(Integer, default=24)
+    enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+
+
+class Alert(Base):
+    """告警记录"""
+    __tablename__ = "alerts"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("AL"))
+    rule_code = Column(String(20), ForeignKey("alert_rules.code"), nullable=False)
+    contract_id = Column(String(8), ForeignKey("contracts.id"), nullable=True)
+    customer_id = Column(String(8), ForeignKey("customers.id"), nullable=True, index=True)
+    level = Column(String(4), nullable=False, default="P2")
+    status = Column(String(20), default="pending")
+    title = Column(String(200), nullable=False)
+    detail = Column(Text, nullable=True)
+    triggered_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
+    claimed_by = Column(String(100), nullable=True)
+    claimed_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolution_note = Column(Text, nullable=True)
+
+
+class AlertLog(Base):
+    """告警操作审计日志"""
+    __tablename__ = "alert_logs"
+
+    id = Column(String(8), primary_key=True, default=lambda: _new_id("LG"))
+    alert_id = Column(String(8), ForeignKey("alerts.id"), nullable=False, index=True)
+    action = Column(String(50), nullable=False)
+    operator = Column(String(100), nullable=True)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now())
