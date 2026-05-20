@@ -21,3 +21,18 @@ DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
 CACHE_TTL_API = int(os.getenv("CACHE_TTL_API", "60"))
 SESSION_TTL = int(os.getenv("SESSION_TTL", "1800"))       # 30 min
 ANTIREPLAY_TTL = int(os.getenv("ANTIREPLAY_TTL", "604800"))  # 7 days
+
+# 安全配置
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH", "")
+
+# Secret Key 加密主密钥 (Fernet key, base64 编码)
+SECRET_KEY_MASTER_KEY = os.getenv(
+    "SECRET_KEY_MASTER_KEY", ""
+)
+
+# 限流配置
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "100"))
+LOGIN_RATE_LIMIT_PER_MINUTE = int(os.getenv("LOGIN_RATE_LIMIT_PER_MINUTE", "10"))
+LOGIN_MAX_FAILURES = int(os.getenv("LOGIN_MAX_FAILURES", "5"))
+LOGIN_LOCKOUT_MINUTES = int(os.getenv("LOGIN_LOCKOUT_MINUTES", "15"))
