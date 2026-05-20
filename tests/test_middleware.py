@@ -1,8 +1,17 @@
 """测试中间件 — 限流 + 请求日志"""
+import os
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.redis import init_redis, close_redis
+
+
+@pytest.fixture(scope="module", autouse=True)
+def enable_rate_limit():
+    """为中间件测试启用限流，与其他测试模块隔离。"""
+    os.environ["RATE_LIMIT_ENABLED"] = "1"
+    yield
+    os.environ["RATE_LIMIT_ENABLED"] = "0"
 
 
 @pytest.fixture(scope="session", autouse=True)

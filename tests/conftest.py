@@ -1,3 +1,4 @@
+import os
 import pytest
 
 # pytest-asyncio: 自动识别 async 测试函数，无需 @pytest.mark.asyncio
@@ -10,6 +11,8 @@ def pytest_configure(config):
     # with SQLAlchemy async engine (created at module import time)
     config.inicfg["asyncio_default_test_loop_scope"] = "session"
     config.inicfg["asyncio_default_fixture_loop_scope"] = "session"
+    # 测试模式下禁用 API 限流，避免大量测试请求触发 429
+    os.environ.setdefault("RATE_LIMIT_ENABLED", "0")
 
 # ---------------------------------------------------------------------------
 # Monkey-patch openpaygo to fix None-handling bugs in _count_is_valid

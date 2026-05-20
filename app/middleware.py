@@ -1,5 +1,6 @@
 """ASGI 中间件 — API 限流 + 请求日志"""
 import logging
+import os
 import time
 
 from fastapi import Request
@@ -25,10 +26,18 @@ def _get_rate_limit(path: str) -> int:
     return RATE_LIMIT_PER_MINUTE
 
 
+def _rate_limit_enabled() -> bool:
+    """检查限流是否启用。通过环境变量 RATE_LIMIT_ENABLED 控制，默认启用。"""
+    return os.getenv("RATE_LIMIT_ENABLED", "1") != "0"
+
+
 class RateLimiterMiddleware(BaseHTTPMiddleware):
     """Redis 滑动窗口限流中间件。"""
 
     async def dispatch(self, request: Request, call_next):
+        if not _rate_limit_enabled():
+            return await call_next(request)
+
         from app.redis import get_redis
 
         r = get_redis()
