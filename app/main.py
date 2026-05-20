@@ -52,6 +52,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Cambodia Solar PAYGO Platform", lifespan=lifespan)
 
+from app.middleware import RateLimiterMiddleware, RequestLoggingMiddleware
+
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimiterMiddleware)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
