@@ -358,3 +358,45 @@ class TestPermanentUnlock:
     async def test_requires_auth(self, client):
         resp = await client.post("/api/customers/C001/permanent-unlock")
         assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Customer 360 / Filters / Tags / MFI
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_get_customers_search(auth_client):
+    """搜索筛选"""
+    resp = await auth_client.get("/api/customers?search=Test")
+    assert resp.status_code == 200
+
+@pytest.mark.asyncio
+async def test_get_customer_360(auth_client):
+    """客户360视图"""
+    customers = (await auth_client.get("/api/customers")).json()
+    if customers:
+        cid = customers[0]["id"]
+        resp = await auth_client.get(f"/api/customers/{cid}/360")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "customer" in data
+        assert "contracts" in data
+        assert "tokens" in data
+
+@pytest.mark.asyncio
+async def test_mfi_crud(auth_client):
+    """MFI 机构 CRUD"""
+    resp = await auth_client.post("/api/mfis", json={"name":"LOLC","branch":"PP"})
+    assert resp.status_code == 200
+    mfis = (await auth_client.get("/api/mfis")).json()
+    assert len(mfis) >= 1
+
+@pytest.mark.asyncio
+async def test_update_tags(auth_client):
+    """客户标签更新"""
+    customers = (await auth_client.get("/api/customers")).json()
+    if customers:
+        cid = customers[0]["id"]
+        resp = await auth_client.put(f"/api/customers/{cid}/tags",
+            json={"tags":["VIP","高风险"]})
+        assert resp.status_code == 200

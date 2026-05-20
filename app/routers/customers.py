@@ -10,6 +10,8 @@ from app.store import (
     add_token,
     add_sms_record, get_sms_records, get_days_for_amount,
     DuplicateDeviceError, DuplicateSecretKeyError,
+    get_customers_filtered, get_customer_360,
+    update_customer_tags, add_mfi, get_mfis,
 )
 from app.redis import cache_get, cache_set, cache_delete, session_get
 from openpaygo import generate_token, TokenType
@@ -74,13 +76,16 @@ class SimulatePayment(BaseModel):
 
 
 @router.get("/customers")
-async def list_customers(request: Request, db: AsyncSession = Depends(get_db)):
+async def list_customers(request: Request,
+                         search: str = None,
+                         status: str = None,
+                         mfi_id: str = None,
+                         tags: str = None,
+                         db: AsyncSession = Depends(get_db)):
     await _check_auth(request)
-    cached = await cache_get("customers:list")
-    if cached:
-        return cached
-    result = await get_customers(db)
-    await cache_set("customers:list", result)
+    result = await get_customers_filtered(db, search=search, status=status,
+                                          mfi_id=mfi_id, tags=tags)
+    # 缓存不适用筛选查询，跳过缓存
     return result
 
 
@@ -254,3 +259,50 @@ async def list_sms(request: Request, customer_id: str = None,
     result = await get_sms_records(db, customer_id)
     await cache_set(f"sms:{customer_id or 'all'}", result)
     return result
+
+
+# ---- 客户 360 视图 ----
+
+@router.get("/customers/{customer_id}/360")
+async def get_customer_360_view(request: Request, customer_id: str,
+                                 db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    view = await get_customer_360(db, customer_id)
+    if not view:
+        raise HTTPException(status_code=404, detail="客户不存在")
+    return view
+
+
+class TagsUpdate(BaseModel):
+    tags: list[str]
+
+
+@router.put("/customers/{customer_id}/tags")
+async def api_update_tags(request: Request, customer_id: str, body: TagsUpdate,
+                           db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    ok = await update_customer_tags(db, customer_id, body.tags)
+    if not ok:
+        raise HTTPException(status_code=404, detail="客户不存在")
+    return {"ok": True}
+
+
+# ---- MFI 管理 ----
+
+class MfiCreate(BaseModel):
+    name: str
+    branch: str = ""
+
+
+@router.get("/mfis")
+async def list_mfis(request: Request, db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    return await get_mfis(db)
+
+
+@router.post("/mfis")
+async def create_mfi(request: Request, body: MfiCreate,
+                     db: AsyncSession = Depends(get_db)):
+    await _check_auth(request)
+    mid = await add_mfi(db, body.name, body.branch)
+    return {"id": mid, "name": body.name, "branch": body.branch}
