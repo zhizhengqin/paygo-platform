@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: paygo-app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://paygo_user:${DB_PASSWORD:-PaygoDB2026!}@db:5432/paygo_platform
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY_MASTER_KEY=${SECRET_KEY_MASTER_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-paygo-jwt-change-in-production}
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    container_name: paygo-db
+    environment:
+      POSTGRES_USER: paygo_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-PaygoDB2026!}
+      POSTGRES_DB: paygo_platform
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paygo_user -d paygo_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    container_name: paygo-redis
+    restart: unless-stopped
+
+volumes:
+  pgdata:
