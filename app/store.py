@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
-    Customer, Token, PaymentRate, SmsRecord, LoanProduct, Contract,
+    Customer, Mfi, Token, PaymentRate, SmsRecord, LoanProduct, Contract,
     RepaymentSchedule, RepaymentRecord, _new_id,
 )
 from app.security import encrypt_secret, decrypt_secret
@@ -169,14 +169,25 @@ async def get_sms_records(db: AsyncSession, customer_id: str = None) -> list[dic
 # ---- Serialization helpers ----
 
 def _customer_to_dict(c: Customer) -> dict:
+    raw_key = None
+    if c.secret_key_encrypted:
+        raw_key = decrypt_secret(c.secret_key_encrypted)
+    elif c.secret_key:
+        raw_key = c.secret_key
     return {
         "id": c.id,
         "name": c.name,
         "phone": c.phone,
         "device_id": c.device_id,
-        "secret_key": decrypt_secret(c.secret_key_encrypted) if c.secret_key_encrypted else (c.secret_key or ""),
+        "secret_key": raw_key or "",
         "count": c.count,
         "status": c.status,
+        "address": c.address,
+        "gps_latitude": float(c.gps_latitude) if c.gps_latitude else None,
+        "gps_longitude": float(c.gps_longitude) if c.gps_longitude else None,
+        "id_number": c.id_number,
+        "mfi_id": c.mfi_id,
+        "tags": c.tags or [],
         "created_at": c.created_at.strftime("%Y-%m-%d") if c.created_at else None,
         "locked_at": c.locked_at.strftime("%Y-%m-%d %H:%M:%S") if c.locked_at else None,
     }
@@ -891,3 +902,98 @@ async def void_token(db: AsyncSession, tid: str, operator: str, reason: str = ""
     t.voided_at = datetime.now()
     await db.commit()
     return True
+
+
+# ============================================================
+# 客户 360 + MFI CRUD + 标签
+# ============================================================
+
+async def get_customers_filtered(
+    db: AsyncSession,
+    search: str = None,
+    status: str = None,
+    mfi_id: str = None,
+    tags: str = None,
+) -> list[dict]:
+    """客户列表 — 支持姓名/电话搜索 + 状态/MFI筛选 + 标签匹配"""
+    q = select(Customer).order_by(Customer.created_at.desc())
+    if search:
+        q = q.where(
+            (Customer.name.ilike(f"%{search}%")) |
+            (Customer.phone.ilike(f"%{search}%"))
+        )
+    if status:
+        q = q.where(Customer.status == status)
+    if mfi_id:
+        q = q.where(Customer.mfi_id == mfi_id)
+    result = await db.execute(q)
+    customers = result.scalars().all()
+
+    # 标签筛选：Python 层面匹配
+    filtered = []
+    for c in customers:
+        d = _customer_to_dict(c)
+        if tags and (not c.tags or tags not in c.tags):
+            continue
+        filtered.append(d)
+    return filtered
+
+
+async def get_customer_360(db: AsyncSession, customer_id: str) -> dict | None:
+    """客户 360 聚合视图：基本信息 + 合同列表 + Token 历史 + MFI 名"""
+    c = await db.get(Customer, customer_id)
+    if not c:
+        return None
+
+    contracts_result = await db.execute(
+        select(Contract).where(Contract.customer_id == customer_id)
+    )
+    contracts = [_contract_to_dict(ct) for ct in contracts_result.scalars().all()]
+
+    tokens_result = await db.execute(
+        select(Token).where(Token.customer_id == customer_id)
+        .order_by(Token.generated_at.desc()).limit(20)
+    )
+    tokens = [_token_to_dict(t) for t in tokens_result.scalars().all()]
+
+    mfi_name = None
+    if c.mfi_id:
+        mfi_result = await db.execute(select(Mfi.name).where(Mfi.id == c.mfi_id))
+        mfi_name = mfi_result.scalar()
+
+    return {
+        "customer": _customer_to_dict(c),
+        "contracts": contracts,
+        "tokens": tokens,
+        "mfi_name": mfi_name,
+    }
+
+
+async def update_customer_tags(db: AsyncSession, customer_id: str, tag_list: list) -> bool:
+    """更新客户标签列表"""
+    c = await db.get(Customer, customer_id)
+    if not c:
+        return False
+    c.tags = tag_list
+    await db.commit()
+    return True
+
+
+async def add_mfi(db: AsyncSession, name: str, branch: str = "") -> str:
+    """新增 MFI 机构"""
+    mid = _new_id("MF")
+    m = Mfi(id=mid, name=name, branch=branch)
+    db.add(m)
+    await db.commit()
+    return mid
+
+
+async def get_mfis(db: AsyncSession, status: str = None) -> list[dict]:
+    """MFI 机构列表"""
+    q = select(Mfi).order_by(Mfi.name)
+    if status:
+        q = q.where(Mfi.status == status)
+    result = await db.execute(q)
+    return [{"id": m.id, "name": m.name, "branch": m.branch or "",
+             "contact_info": m.contact_info, "api_endpoint": m.api_endpoint,
+             "status": m.status} for m in result.scalars().all()]

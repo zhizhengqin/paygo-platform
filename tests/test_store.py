@@ -334,3 +334,73 @@ class TestTokenManagement:
         await void_token(session, tid, "admin", "test")
         result = await reissue_token(session, tid, reason="test")
         assert result is None
+
+
+from app.store import (
+    get_customers_filtered, get_customer_360, add_mfi, get_mfis,
+    update_customer_tags,
+)
+
+
+class TestCustomer360:
+    async def _setup_360(self, session):
+        from app.security import init_fernet
+        init_fernet()
+        mfi_id = await add_mfi(session, "LOLC Cambodia", "Phnom Penh")
+        from app.store import add_customer
+        cid = await add_customer(session, "Test360", "+855555", "DEV-360", "a"*32)
+        from app.models import Customer
+        c = await session.get(Customer, cid)
+        c.address = "123 Street"
+        c.id_number = "ID001"
+        c.mfi_id = mfi_id
+        await session.commit()
+        return cid
+
+    async def test_get_customers_filtered_by_name(self, session):
+        cid = await self._setup_360(session)
+        result = await get_customers_filtered(session, search="Test360")
+        assert len(result) == 1
+        empty = await get_customers_filtered(session, search="NoSuchName")
+        assert len(empty) == 0
+
+    async def test_get_customer_360(self, session):
+        cid = await self._setup_360(session)
+        view = await get_customer_360(session, cid)
+        assert view is not None
+        assert view["customer"]["name"] == "Test360"
+        assert view["customer"]["address"] == "123 Street"
+        assert "contracts" in view
+        assert "tokens" in view
+        assert view["mfi_name"] == "LOLC Cambodia"
+
+    async def test_update_customer_tags(self, session):
+        cid = await self._setup_360(session)
+        await update_customer_tags(session, cid, ["VIP", "高风险"])
+        c = await get_customer(session, cid)
+        assert "VIP" in c["tags"]
+        assert "高风险" in c["tags"]
+
+    async def test_get_customers_filtered_by_tag(self, session):
+        cid = await self._setup_360(session)
+        await update_customer_tags(session, cid, ["VIP"])
+        result = await get_customers_filtered(session, tags="VIP")
+        assert len(result) >= 1
+        empty = await get_customers_filtered(session, tags="NoSuchTag")
+        assert len(empty) == 0
+
+
+class TestMfiCRUD:
+    async def test_add_and_list_mfi(self, session):
+        mid = await add_mfi(session, "PRASAC", "Siem Reap")
+        assert mid.startswith("MF")
+        mfis = await get_mfis(session)
+        assert len(mfis) == 1
+        assert mfis[0]["name"] == "PRASAC"
+
+    async def test_get_mfis_filter_by_status(self, session):
+        await add_mfi(session, "ACLEDA", "Battambang")
+        active = await get_mfis(session, status="active")
+        assert len(active) == 1
+        inactive = await get_mfis(session, status="disabled")
+        assert len(inactive) == 0
