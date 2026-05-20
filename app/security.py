@@ -26,15 +26,37 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
+def _persist_fernet_key(key_b64: str):
+    """将 Fernet 密钥持久化到 .env 文件，确保跨进程一致。"""
+    import os as _os
+    env_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), ".env")
+    try:
+        existing = ""
+        if _os.path.exists(env_path):
+            with open(env_path) as f:
+                existing = f.read()
+        line = f"SECRET_KEY_MASTER_KEY={key_b64}\n"
+        if "SECRET_KEY_MASTER_KEY" in existing:
+            existing_lines = existing.split("\n")
+            new_lines = [line if "SECRET_KEY_MASTER_KEY" in l else l for l in existing_lines]
+            with open(env_path, "w") as f:
+                f.write("\n".join(new_lines))
+        else:
+            with open(env_path, "a") as f:
+                f.write(line)
+    except Exception:
+        pass  # 非关键操作，失败不影响功能
+
+
 def init_fernet(master_key: str = None):
     """初始化 Fernet 加密器。若未提供 master_key 则从环境变量读取，仍无则自动生成。"""
     global _fernet
     key = master_key or SECRET_KEY_MASTER_KEY
     if not key:
         key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+        _persist_fernet_key(key)
         logger.warning(
-            "未设置 SECRET_KEY_MASTER_KEY 环境变量，已自动生成临时密钥。"
-            "生产环境必须通过环境变量注入以确保持久化！"
+            "未设置 SECRET_KEY_MASTER_KEY 环境变量，已自动生成密钥并持久化到 .env 文件。"
         )
     if isinstance(key, str):
         key = key.encode("utf-8")

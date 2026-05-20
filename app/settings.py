@@ -1,6 +1,16 @@
 """应用配置 — 数据库连接、Redis 连接、缓存 TTL 等。"""
 import os
 
+# 加载 .env 文件中的环境变量（如 SECRET_KEY_MASTER_KEY）
+_env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, val = line.partition("=")
+                os.environ.setdefault(key, val)
+
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform",
