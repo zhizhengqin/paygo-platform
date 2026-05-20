@@ -1556,4 +1556,179 @@ async function deleteUser(uid) {
   showToast('用户已删除'); showSettings();
 }
 </script>
+
+<!-- 浮动设备控制器 -->
+<style>
+.floating-ctrl {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  width: 360px; max-height: 480px;
+  background: #0a0a0a; border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  font-family: 'Courier New', monospace; color: #10b981;
+  display: none; flex-direction: column; overflow: hidden;
+}
+.floating-ctrl.open { display: flex; }
+.ctrl-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: #111; border-bottom: 1px solid #1f2937;
+  cursor: move; user-select: none;
+}
+.ctrl-header span { font-size: 13px; font-weight: 600; color: #d1d5db; }
+.ctrl-header button {
+  background: none; border: none; color: #9ca3af; font-size: 18px;
+  cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.ctrl-header button:hover { color: #ef4444; }
+.ctrl-body { padding: 14px; overflow-y: auto; flex: 1; font-size: 13px; line-height: 1.6; }
+.ctrl-body select {
+  width: 100%; padding: 6px 10px; font-size: 12px; border: 1px solid #374151;
+  border-radius: 6px; background: #0a0a0a; color: #e2e8f0; margin-bottom: 8px;
+}
+.ctrl-body input {
+  width: 100%; padding: 8px 12px; font-size: 18px; text-align: center;
+  letter-spacing: 6px; border: 1.5px solid #10b981; border-radius: 6px;
+  background: #0a0a0a; color: #10b981; font-family: 'Courier New', monospace;
+  margin: 8px 0; box-sizing: border-box;
+}
+.ctrl-body button {
+  width: 100%; padding: 8px; margin: 4px 0; border: 1px solid #10b981;
+  border-radius: 6px; background: transparent; color: #10b981;
+  font-size: 13px; cursor: pointer;
+}
+.ctrl-body button:active { background: #10b981; color: #000; }
+.ctrl-fab {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9998;
+  width: 48px; height: 48px; border-radius: 50%; border: none;
+  background: #10b981; color: #000; font-size: 22px; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(16,185,129,0.4);
+  display: flex; align-items: center; justify-content: center;
+}
+.ctrl-fab.hidden { display: none; }
+</style>
+
+<div class="floating-ctrl" id="floatingCtrl">
+  <div class="ctrl-header" id="ctrlHeader">
+    <span>☀ PAYGO 设备控制器</span>
+    <button onclick="closeController()" title="关闭">×</button>
+  </div>
+  <div class="ctrl-body" id="ctrlBody">
+    <div style="text-align:center;color:#64748b;padding:20px;">加载设备中…</div>
+  </div>
+</div>
+<button class="ctrl-fab" id="ctrlFab" onclick="openController()" title="设备模拟器">☀</button>
+
+<script>
+// ---- 浮动控制器 ----
+let ctrlDevice = null;
+
+function openController() {
+  document.getElementById('floatingCtrl').classList.add('open');
+  document.getElementById('ctrlFab').classList.add('hidden');
+  loadCtrlDevices();
+}
+function closeController() {
+  document.getElementById('floatingCtrl').classList.remove('open');
+  document.getElementById('ctrlFab').classList.remove('hidden');
+}
+
+// Dragging
+(function() {
+  let dragging = false, offX = 0, offY = 0;
+  const header = document.getElementById('ctrlHeader');
+  const panel = document.getElementById('floatingCtrl');
+  header.addEventListener('mousedown', function(e) {
+    dragging = true; offX = e.clientX - panel.offsetLeft; offY = e.clientY - panel.offsetTop;
+    panel.style.transition = 'none';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    panel.style.left = (e.clientX - offX) + 'px';
+    panel.style.top = (e.clientY - offY) + 'px';
+    panel.style.bottom = 'auto'; panel.style.right = 'auto';
+  });
+  document.addEventListener('mouseup', function() { dragging = false; });
+  // Touch support
+  header.addEventListener('touchstart', function(e) {
+    dragging = true; offX = e.touches[0].clientX - panel.offsetLeft; offY = e.touches[0].clientY - panel.offsetTop;
+    panel.style.transition = 'none';
+  });
+  document.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    panel.style.left = (e.touches[0].clientX - offX) + 'px';
+    panel.style.top = (e.touches[0].clientY - offY) + 'px';
+    panel.style.bottom = 'auto'; panel.style.right = 'auto';
+  });
+  document.addEventListener('touchend', function() { dragging = false; });
+})();
+
+async function loadCtrlDevices() {
+  try {
+    const resp = await fetch('/api/devices/geo');
+    const devices = await resp.json();
+    if (devices.length === 0) {
+      document.getElementById('ctrlBody').innerHTML = '<div style="text-align:center;color:#64748b;">暂无设备<br><small>请先在客户管理中创建带 GPS 的客户</small></div>';
+      return;
+    }
+    document.getElementById('ctrlBody').innerHTML = `
+      <select id="ctrlDeviceSel" onchange="onCtrlDeviceSelect()">
+        <option value="">-- 选择设备 --</option>
+        ${devices.map(function(d) { return '<option value="' + d.id + '|' + d.device_id + '|' + d.name + '">' + escapeHtml(d.name) + ' · ' + escapeHtml(d.device_id) + '</option>'; }).join('')}
+      </select>
+      <div id="ctrlDeviceInfo" style="text-align:center;color:#64748b;padding:10px;">选择设备后显示详情</div>
+    `;
+  } catch(e) {
+    document.getElementById('ctrlBody').innerHTML = '<div style="text-align:center;color:#ef4444;">加载失败</div>';
+  }
+}
+
+async function onCtrlDeviceSelect() {
+  const sel = document.getElementById('ctrlDeviceSel');
+  if (!sel.value) return;
+  const parts = sel.value.split('|');
+  const resp = await fetch('/api/customers/' + encodeURIComponent(parts[0]) + '/360');
+  const view = await resp.json();
+  ctrlDevice = view.customer;
+  const c = ctrlDevice;
+  const relay = (c.status === 'active' || c.status === 'permanent');
+  document.getElementById('ctrlDeviceInfo').innerHTML = `
+    <div>设备: <b>${escapeHtml(c.device_id)}</b> · 客户: <b>${escapeHtml(c.name)}</b></div>
+    <div>密钥: ${(c.secret_key||'').substring(0,8)}… · Count: ${c.count}</div>
+    <div>状态: ${c.status==='active'?'🟢已激活':c.status==='locked'?'🔴已锁定':'⭐永久解锁'}</div>
+    <div>继电器: <span style="color:${relay?'#10b981':'#6b7280'};">${relay?'● 供电中':'○ 断开'}</span></div>
+    <input type="text" id="ctrlTokenInput" placeholder="9位Token" maxlength="9" inputmode="numeric" pattern="[0-9]*" autocomplete="off" onkeydown="if(event.key==='Enter')ctrlSubmitToken()">
+    <button onclick="ctrlSubmitToken()">验证 Token</button>
+    <div id="ctrlResult" style="text-align:center;margin-top:4px;font-size:12px;"></div>
+  `;
+  document.getElementById('ctrlTokenInput') && document.getElementById('ctrlTokenInput').focus();
+}
+
+async function ctrlSubmitToken() {
+  const input = document.getElementById('ctrlTokenInput');
+  const result = document.getElementById('ctrlResult');
+  const token = input.value.trim();
+  if (!ctrlDevice || !ctrlDevice.secret_key) { result.innerHTML = '<span style="color:#ef4444;">✗ 设备密钥无效</span>'; return; }
+  if (token.length !== 9 || !/^\d{9}$/.test(token)) { result.innerHTML = '<span style="color:#ef4444;">✗ Token格式错误</span>'; return; }
+  try {
+    const resp = await fetch('/api/controller/validate-token', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({customer_id: ctrlDevice.id, token: token})
+    });
+    const data = await resp.json();
+    if (!data.valid) {
+      result.innerHTML = '<span style="color:#ef4444;">✗ ' + (data.reason||'无效') + '</span>';
+    } else {
+      result.innerHTML = '<span style="color:#10b981;">✓ 验证成功 · +' + data.days + ' 天</span>';
+      input.value = '';
+      // Refresh device info
+      setTimeout(async function() {
+        const resp2 = await fetch('/api/customers/' + encodeURIComponent(ctrlDevice.id) + '/360');
+        const view2 = await resp2.json();
+        ctrlDevice = view2.customer;
+        onCtrlDeviceSelect();
+      }, 500);
+    }
+  } catch(e) { result.innerHTML = '<span style="color:#ef4444;">✗ 服务不可用</span>'; }
+}
+</script>
+
 {% endblock %}
