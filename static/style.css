@@ -678,8 +678,15 @@ body {
   .main-layout {
     flex-direction: column; height: auto; min-height: calc(100vh - 88px);
   }
-  .sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar { width: 100%; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
   .sidebar-header { padding: 8px 12px; }
+  .customer-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 120px;
+    max-height: 35vh;
+    padding: 8px;
+  }
   .detail-panel {
     width: 100%; padding: 12px; overflow-x: hidden;
   }
@@ -715,7 +722,7 @@ body {
 
   /* 浮动控制器 */
   .floating-ctrl { width: 92vw; max-height: 55vh; right: 4vw; bottom: 70px; left: 4vw; }
-  .ctrl-fab { bottom: 16px; right: 16px; width: 44px; height: 44px; font-size: 20px; }
+  .ctrl-fab { display: none; }
 
   /* 操作按钮组 */
   .action-group { flex-direction: column; }

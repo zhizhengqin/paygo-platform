@@ -26,7 +26,7 @@
   <main class="detail-panel" id="detailPanel">
     <div class="empty-state">
       <div class="icon">☀</div>
-      <p>选择左侧客户查看详情</p>
+      <p>选择客户查看详情</p>
     </div>
   </main>
 </div>
@@ -190,7 +190,7 @@ function switchTab(tab) {
     document.getElementById('detailPanel').innerHTML = `
       <div class="empty-state">
         <div class="icon">☀</div>
-        <p>选择左侧客户查看详情</p>
+        <p>选择客户查看详情</p>
       </div>
     `;
   } else if (tab === 'contracts') {
@@ -774,7 +774,7 @@ async function loadContracts() {
     document.getElementById('detailPanel').innerHTML = `
       <div class="empty-state">
         <div class="icon">📋</div>
-        <p>选择左侧合同查看详情</p>
+        <p>选择合同查看详情</p>
       </div>
     `;
   }
@@ -1125,7 +1125,7 @@ async function loadTokens() {
   }).join('');
 
   if (!selectedTokenId) {
-    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>选择左侧 Token 查看详情</p></div>';
+    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div class="icon">🔑</div><p>选择 Token 查看详情</p></div>';
   }
 }
 
@@ -1269,7 +1269,7 @@ async function loadAlerts() {
   }).join('');
 
   if (!selectedAlertId) {
-    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div class="icon">🚨</div><p>选择左侧告警查看详情</p></div>';
+    document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><div class="icon">🚨</div><p>选择告警查看详情</p></div>';
   }
 }
 
@@ -1670,6 +1670,9 @@ async function deleteUser(uid) {
   display: flex; align-items: center; justify-content: center;
 }
 .ctrl-fab.hidden { display: none; }
+@media (max-width: 640px) {
+  .ctrl-fab { display: none !important; }
+}
 </style>
 
 <div class="floating-ctrl" id="floatingCtrl">
