@@ -359,6 +359,9 @@ async function showDashboard() {
     </div>
   `;
 
+  // 清理旧图表实例（DOM 已重建）
+  _disposeCharts();
+
   // Load MFI filter
   try {
     var mfisResp = await fetch('/api/mfis');
@@ -392,7 +395,6 @@ function _disposeCharts() {
   _charts = [];
 }
 function _addChart(el) {
-  _disposeCharts(); // 先清理旧实例（每次 showDashboard 重建 DOM）
   var c = echarts.init(el); _charts.push(c); return c;
 }
 window.addEventListener('resize', function() {
