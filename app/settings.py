@@ -11,10 +11,13 @@ if os.path.exists(_env_path):
                 key, _, val = line.partition("=")
                 os.environ.setdefault(key, val)
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform",
-)
+# Railway / Render 等云平台提供的 DATABASE_URL 是 postgres:// 格式，
+# 需要转换为 SQLAlchemy asyncpg 需要的 postgresql+asyncpg:// 格式
+_raw_db_url = os.getenv("DATABASE_URL", "")
+if _raw_db_url:
+    _raw_db_url = _raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+DATABASE_URL = _raw_db_url or "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform"
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
