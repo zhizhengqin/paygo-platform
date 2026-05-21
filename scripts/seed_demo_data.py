@@ -1,29 +1,38 @@
 """演示数据初始化 — 8 客户 × 7 合同 × 3 MFI × 3 告警 × 完整状态覆盖"""
 import asyncio
+import os
 from decimal import Decimal
 from datetime import date, datetime
 
-from sqlalchemy import delete, text
+from sqlalchemy import text
 
 from app.database import engine, AsyncSessionLocal
-from app.models import Customer, Token, SmsRecord, PaymentRate, Contract, LoanProduct, RepaymentSchedule, Mfi, Alert, AlertRule
+from app.models import Base, Customer, Token, SmsRecord, PaymentRate, Contract, LoanProduct, RepaymentSchedule, Mfi, Alert, AlertRule
 from app.store import (
     add_customer, set_customer_count, update_customer_status,
     add_loan_product, add_contract, approve_contract,
     update_contract_status, add_token, mark_schedule_paid,
     seed_payment_rates, seed_loan_products, seed_alert_rules,
-    add_mfi, update_customer_tags, migrate_secret_keys_to_encrypted,
+    add_mfi, update_customer_tags,
 )
+
+# 加载 .env 确保障书密钥与服务器一致
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k, v)
 
 
 async def main():
+    # 彻底清空：删表重建，确保没有任何残留数据
     async with engine.begin() as conn:
-        # 清空数据（按 FK 依赖顺序）
-        for tbl in ["alert_logs", "alerts", "repayment_schedules", "repayment_records",
-                     "contracts", "tokens", "sms_records", "payment_rates",
-                     "loan_products", "customers", "device_states",
-                     "alert_rules", "mfis", "users", "sms_templates"]:
-            await conn.execute(text(f"DELETE FROM {tbl}"))
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    print("✓ 数据库已清空并重建所有表")
 
     async with AsyncSessionLocal() as db:
         # ── MFI ──
