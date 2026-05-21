@@ -42,13 +42,45 @@ router/  →  store.py  →  models.py  →  PostgreSQL 15
 
 ## 开发规范
 
+### Superpowers 框架（强制执行）
+
+所有开发升级迭代**必须**通过 Superpowers 技能体系，不允许跳过：
+
+| 场景 | 必须使用的技能 |
+|:---|:---|
+| 新功能 / 复杂改动 | `brainstorming` → `writing-plans` → `subagent-driven-development` |
+| Bug 修复 | `systematic-debugging`（先定位根因再修改） |
+| 功能完成 / 合并前 | `verification-before-completion` + `requesting-code-review` |
+| 分支收尾 | `finishing-a-development-branch` |
+
+**复杂改动的判定标准**（满足任一即为复杂）：
+- 涉及 3 个以上文件
+- 需要新增数据模型或 API 端点
+- 涉及 UI 布局或交互变更
+- 不确定实现方案
+
+### UI 开发（强制 Playwright 验证）
+
+- **界面相关改动必须通过 Playwright 截图验证**，不允许仅凭代码逻辑判断 UI 正确性
+- 移动端适配需在 375×812 视口下验证
+- 修改完成后提供 Playwright 验证结果（截图 + 关键数据），确认无误再回复
+- 常用验证项：z-index 层级、点击可达性、元素可见性、菜单展开/收起
+
+### 日常规范
+
 - **强制 TDD**：先写失败测试再写实现。测试数据库 `paygo_platform_test` 独立隔离
 - **计划先行**：每个 Phase 前写实施计划到 `docs/superpowers/plans/`
 - **子代理执行**：用 Subagent-Driven Development 按 task 逐个实现+审查
 - **API 前缀**：所有接口 `/api/` 前缀，健康检查 `/api/v1/health`
 - **认证**：`_check_auth()` 三通道（Bearer > JWT Cookie > Session），复用于所有 router
-- **中文注释**：代码注释用中文，提交信息用中文简述
 - **Fernet 密钥一致性**：`SECRET_KEY_MASTER_KEY` 存于 `.env`，首次启动自动生成并持久化。种子数据和服务器必须使用同一密钥
+
+### 语言约定
+
+- **思考过程**：中文
+- **回复用户**：中文
+- **代码注释**：中文
+- **Git 提交信息**：中文简述
 
 ## 关键环境变量
 
