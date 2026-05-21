@@ -172,6 +172,13 @@ async def api_seed_demo_data():
         capture_output=True, text=True, timeout=60,
         env={**os.environ, "PYTHONPATH": base}
     )
+    # 清除仪表盘缓存，确保加载种子数据后仪表盘立即刷新
+    if result.returncode == 0:
+        try:
+            from app.redis import cache_delete
+            await cache_delete("dashboard:enhanced:*")
+        except Exception:
+            pass
     return {"output": result.stdout, "error": result.stderr, "returncode": result.returncode}
 
 

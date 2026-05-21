@@ -281,12 +281,14 @@ function copyKey(key, btn) {
 }
 
 // ---- 仪表盘首页 (增强版) ----
+var dashboardDays = 30;
 async function showDashboard() {
   selectedCustomerId = null;
   await loadCustomers();
 
-  var days = 30;
-  var resp = await fetch('/api/dashboard/enhanced-stats?days=' + days);
+  var mfi = document.getElementById('mfiFilter');
+  var mfiParam = (mfi && mfi.value) ? '&mfi_id=' + encodeURIComponent(mfi.value) : '';
+  var resp = await fetch('/api/dashboard/enhanced-stats?days=' + dashboardDays + mfiParam);
   if (!resp.ok) {
     document.getElementById('detailPanel').innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
     return;
@@ -338,7 +340,7 @@ async function showDashboard() {
       </div>
 
       <div class="dash-grid">
-        <div class="dash-chart-box"><h4>收入趋势 (近${days}天)</h4><div class="chart-wrap"><div id="revenueChart" style="height:250px;"></div></div></div>
+        <div class="dash-chart-box"><h4>收入趋势 (近${dashboardDays}天)</h4><div class="chart-wrap"><div id="revenueChart" style="height:250px;"></div></div></div>
         <div class="dash-chart-box"><h4>Token 生成趋势</h4><div class="chart-wrap"><div id="tokenChart" style="height:250px;"></div></div></div>
       </div>
 
@@ -379,6 +381,7 @@ function showDashboardWithDays(d) {
     b.style.background = (i===0&&d===7)||(i===1&&d===30)||(i===2&&d===90) ? '#059669' : '';
     b.style.color = (i===0&&d===7)||(i===1&&d===30)||(i===2&&d===90) ? '#fff' : '';
   });
+  dashboardDays = d;
   showDashboard();
 }
 
