@@ -13,11 +13,25 @@ if os.path.exists(_env_path):
 
 # Railway / Render 等云平台提供的 DATABASE_URL 是 postgres:// 格式，
 # 需要转换为 SQLAlchemy asyncpg 需要的 postgresql+asyncpg:// 格式
-_raw_db_url = os.getenv("DATABASE_URL", "")
-if _raw_db_url:
-    _raw_db_url = _raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    _raw_db_url = _raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-DATABASE_URL = _raw_db_url or "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform"
+# 同时兼容 DATABASE_PRIVATE_URL（Railway 内部网络）和独立 PG* 变量
+def _build_db_url():
+    raw = os.getenv("DATABASE_URL", "") or os.getenv("DATABASE_PRIVATE_URL", "")
+    if raw:
+        raw = raw.replace("postgresql://", "postgresql+asyncpg://", 1)
+        raw = raw.replace("postgres://", "postgresql+asyncpg://", 1)
+        return raw
+    # 从独立 PG* 变量构建
+    pg_host = os.getenv("PGHOST", "")
+    if pg_host:
+        pg_user = os.getenv("PGUSER", "postgres")
+        pg_pass = os.getenv("PGPASSWORD", "")
+        pg_port = os.getenv("PGPORT", "5432")
+        pg_db = os.getenv("PGDATABASE", "postgres")
+        auth = f"{pg_user}:{pg_pass}@" if pg_pass else f"{pg_user}@"
+        return f"postgresql+asyncpg://{auth}{pg_host}:{pg_port}/{pg_db}"
+    return "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform"
+
+DATABASE_URL = _build_db_url()
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
