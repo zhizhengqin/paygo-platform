@@ -44,22 +44,25 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         if r is None:
             return await call_next(request)
 
-        ip = _get_client_ip(request)
-        path = request.url.path
-        limit = _get_rate_limit(path)
-        key = f"ratelimit:{ip}:{path}"
+        try:
+            ip = _get_client_ip(request)
+            path = request.url.path
+            limit = _get_rate_limit(path)
+            key = f"ratelimit:{ip}:{path}"
 
-        current = await r.incr(key)
-        if current == 1:
-            await r.expire(key, 60)
+            current = await r.incr(key)
+            if current == 1:
+                await r.expire(key, 60)
 
-        if current > limit:
-            ttl = await r.ttl(key)
-            return JSONResponse(
-                status_code=429,
-                content={"detail": f"请求过于频繁，请 {ttl} 秒后重试"},
-                headers={"Retry-After": str(ttl)},
-            )
+            if current > limit:
+                ttl = await r.ttl(key)
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": f"请求过于频繁，请 {ttl} 秒后重试"},
+                    headers={"Retry-After": str(ttl)},
+                )
+        except Exception:
+            pass  # Redis 不可用时降级放行
 
         return await call_next(request)
 
