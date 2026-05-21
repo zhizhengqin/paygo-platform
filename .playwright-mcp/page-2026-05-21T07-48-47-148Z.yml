@@ -1,0 +1,188 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - generic [ref=e7]:
+      - link "📱 设备模拟器" [ref=e8] [cursor=pointer]:
+        - /url: "#"
+      - link "📖 平台说明书" [ref=e9] [cursor=pointer]:
+        - /url: /help
+      - link "退出" [ref=e10] [cursor=pointer]:
+        - /url: /logout
+  - navigation [ref=e12]:
+    - link "运营仪表盘" [ref=e13] [cursor=pointer]:
+      - /url: /dashboard
+    - link "客户管理" [ref=e14] [cursor=pointer]:
+      - /url: /dashboard
+    - link "合同管理" [ref=e15] [cursor=pointer]:
+      - /url: /dashboard
+    - link "Token 管理" [ref=e16] [cursor=pointer]:
+      - /url: /dashboard
+    - link "告警中心" [ref=e17] [cursor=pointer]:
+      - /url: /dashboard
+    - link "设备地图" [ref=e18] [cursor=pointer]:
+      - /url: /dashboard
+    - link "报表中心" [ref=e19] [cursor=pointer]:
+      - /url: /dashboard
+    - link "系统设置" [ref=e20] [cursor=pointer]:
+      - /url: /dashboard
+  - main [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - heading "运营仪表盘" [level=2] [ref=e25]
+        - generic [ref=e26]:
+          - combobox [ref=e27]:
+            - option "全部 MFI" [selected]
+            - option "ACLEDA Bank"
+            - option "LOLC Cambodia"
+            - option "PRASAC"
+          - generic [ref=e28]:
+            - button "7天" [ref=e29] [cursor=pointer]
+            - button "30天" [ref=e30] [cursor=pointer]
+            - button "90天" [ref=e31] [cursor=pointer]
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]: "9"
+          - generic [ref=e35]: 总客户数
+        - generic [ref=e36]:
+          - generic [ref=e37]: "3"
+          - generic [ref=e38]: 活跃设备
+        - generic [ref=e39]:
+          - generic [ref=e40]: $4178
+          - generic [ref=e41]: 本月收入 (USD)
+        - generic [ref=e42]:
+          - generic [ref=e43]: "5"
+          - generic [ref=e44]: 逾期锁定 (62.5%)
+        - generic [ref=e45]:
+          - generic [ref=e46]: "64"
+          - generic [ref=e47]: 本月 Token 生成
+        - generic [ref=e48]:
+          - generic [ref=e49]: "3"
+          - generic [ref=e50]: 执行中合同
+        - generic [ref=e51]:
+          - generic [ref=e52]: "1"
+          - generic [ref=e53] [cursor=pointer]: 待处理告警
+        - generic [ref=e54]:
+          - generic [ref=e55]: 62.5%
+          - generic [ref=e56]: 逾期率
+      - generic [ref=e57]:
+        - heading "收入趋势 (近30天)" [level=4] [ref=e59]
+        - heading "Token 生成趋势" [level=4] [ref=e65]
+      - generic [ref=e70]:
+        - heading "告警级别分布" [level=4] [ref=e72]
+        - heading "近7天告警趋势" [level=4] [ref=e78]
+      - generic [ref=e83]:
+        - heading "设备状态分布" [level=4] [ref=e85]
+        - generic [ref=e90]:
+          - heading "最近交易" [level=4] [ref=e91]
+          - table [ref=e92]:
+            - rowgroup [ref=e93]:
+              - row "时间 客户 金额 天数" [ref=e94]:
+                - columnheader "时间" [ref=e95]
+                - columnheader "客户" [ref=e96]
+                - columnheader "金额" [ref=e97]
+                - columnheader "天数" [ref=e98]
+            - rowgroup [ref=e99]:
+              - row "2026-05-21 06:18:45 Rithy $62.89 30天" [ref=e100]:
+                - cell "2026-05-21 06:18:45" [ref=e101]
+                - cell "Rithy" [ref=e102]
+                - cell "$62.89" [ref=e103]
+                - cell "30天" [ref=e104]
+              - row "2026-05-21 06:18:45 Rithy $62.89 30天" [ref=e105]:
+                - cell "2026-05-21 06:18:45" [ref=e106]
+                - cell "Rithy" [ref=e107]
+                - cell "$62.89" [ref=e108]
+                - cell "30天" [ref=e109]
+              - row "2026-05-21 06:18:45 Rithy $62.89 30天" [ref=e110]:
+                - cell "2026-05-21 06:18:45" [ref=e111]
+                - cell "Rithy" [ref=e112]
+                - cell "$62.89" [ref=e113]
+                - cell "30天" [ref=e114]
+              - row "2026-05-21 06:18:45 Rithy $62.89 30天" [ref=e115]:
+                - cell "2026-05-21 06:18:45" [ref=e116]
+                - cell "Rithy" [ref=e117]
+                - cell "$62.89" [ref=e118]
+                - cell "30天" [ref=e119]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e120]:
+                - cell "2026-05-21 06:18:45" [ref=e121]
+                - cell "Dara" [ref=e122]
+                - cell "$94.33" [ref=e123]
+                - cell "30天" [ref=e124]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e125]:
+                - cell "2026-05-21 06:18:45" [ref=e126]
+                - cell "Dara" [ref=e127]
+                - cell "$94.33" [ref=e128]
+                - cell "30天" [ref=e129]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e130]:
+                - cell "2026-05-21 06:18:45" [ref=e131]
+                - cell "Dara" [ref=e132]
+                - cell "$94.33" [ref=e133]
+                - cell "30天" [ref=e134]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e135]:
+                - cell "2026-05-21 06:18:45" [ref=e136]
+                - cell "Dara" [ref=e137]
+                - cell "$94.33" [ref=e138]
+                - cell "30天" [ref=e139]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e140]:
+                - cell "2026-05-21 06:18:45" [ref=e141]
+                - cell "Dara" [ref=e142]
+                - cell "$94.33" [ref=e143]
+                - cell "30天" [ref=e144]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e145]:
+                - cell "2026-05-21 06:18:45" [ref=e146]
+                - cell "Dara" [ref=e147]
+                - cell "$94.33" [ref=e148]
+                - cell "30天" [ref=e149]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e150]:
+                - cell "2026-05-21 06:18:45" [ref=e151]
+                - cell "Dara" [ref=e152]
+                - cell "$94.33" [ref=e153]
+                - cell "30天" [ref=e154]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e155]:
+                - cell "2026-05-21 06:18:45" [ref=e156]
+                - cell "Dara" [ref=e157]
+                - cell "$94.33" [ref=e158]
+                - cell "30天" [ref=e159]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e160]:
+                - cell "2026-05-21 06:18:45" [ref=e161]
+                - cell "Dara" [ref=e162]
+                - cell "$94.33" [ref=e163]
+                - cell "30天" [ref=e164]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e165]:
+                - cell "2026-05-21 06:18:45" [ref=e166]
+                - cell "Dara" [ref=e167]
+                - cell "$94.33" [ref=e168]
+                - cell "30天" [ref=e169]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e170]:
+                - cell "2026-05-21 06:18:45" [ref=e171]
+                - cell "Dara" [ref=e172]
+                - cell "$94.33" [ref=e173]
+                - cell "30天" [ref=e174]
+              - row "2026-05-21 06:18:45 Dara $94.33 30天" [ref=e175]:
+                - cell "2026-05-21 06:18:45" [ref=e176]
+                - cell "Dara" [ref=e177]
+                - cell "$94.33" [ref=e178]
+                - cell "30天" [ref=e179]
+              - row "2026-05-21 06:18:45 Vannak $60.00 30天" [ref=e180]:
+                - cell "2026-05-21 06:18:45" [ref=e181]
+                - cell "Vannak" [ref=e182]
+                - cell "$60.00" [ref=e183]
+                - cell "30天" [ref=e184]
+              - row "2026-05-21 06:18:45 Vannak $0.00 永久" [ref=e185]:
+                - cell "2026-05-21 06:18:45" [ref=e186]
+                - cell "Vannak" [ref=e187]
+                - cell "$0.00" [ref=e188]
+                - cell "永久" [ref=e189]
+              - row "2026-05-21 06:18:45 Vannak $62.71 30天" [ref=e190]:
+                - cell "2026-05-21 06:18:45" [ref=e191]
+                - cell "Vannak" [ref=e192]
+                - cell "$62.71" [ref=e193]
+                - cell "30天" [ref=e194]
+              - row "2026-05-21 06:18:45 Vannak $62.89 30天" [ref=e195]:
+                - cell "2026-05-21 06:18:45" [ref=e196]
+                - cell "Vannak" [ref=e197]
+                - cell "$62.89" [ref=e198]
+                - cell "30天" [ref=e199]
+  - button "☀" [ref=e200] [cursor=pointer]

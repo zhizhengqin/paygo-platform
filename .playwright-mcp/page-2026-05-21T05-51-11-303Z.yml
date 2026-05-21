@@ -1,0 +1,48 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - img "新华智科技" [ref=e4]
+    - generic [ref=e5]:
+      - link "📱 设备模拟器" [ref=e6] [cursor=pointer]:
+        - /url: "#"
+      - link "📖 平台说明书" [ref=e7] [cursor=pointer]:
+        - /url: /help
+      - link "退出" [ref=e8] [cursor=pointer]:
+        - /url: /logout
+  - button "☰ 导航 ▾" [ref=e10] [cursor=pointer]
+  - generic [ref=e11]:
+    - complementary [ref=e191]:
+      - generic [ref=e192]:
+        - heading "合同列表" [level=3] [ref=e219] [cursor=pointer]
+        - generic [ref=e194]: "7"
+        - button "+ 新增" [ref=e195] [cursor=pointer]
+      - generic [ref=e196]:
+        - generic [ref=e220] [cursor=pointer]:
+          - generic [ref=e221]: 🔴 KH-2026-00007
+          - generic [ref=e222]: Rithy · recovered
+        - generic [ref=e223] [cursor=pointer]:
+          - generic [ref=e224]: 📝 KH-2026-00006
+          - generic [ref=e225]: Kunthea · draft
+        - generic [ref=e226] [cursor=pointer]:
+          - generic [ref=e227]: 🟢 KH-2026-00005
+          - generic [ref=e228]: Dara · active
+        - generic [ref=e229] [cursor=pointer]:
+          - generic [ref=e230]: ✅ KH-2026-00004
+          - generic [ref=e231]: Vannak · closed
+        - generic [ref=e232] [cursor=pointer]:
+          - generic [ref=e233]: 🟡 KH-2026-00003
+          - generic [ref=e234]: Bopha · overdue
+        - generic [ref=e235] [cursor=pointer]:
+          - generic [ref=e236]: 🟢 KH-2026-00002
+          - generic [ref=e237]: Chenda · active
+        - generic [ref=e238] [cursor=pointer]:
+          - generic [ref=e239]: 🟢 KH-2026-00001
+          - generic [ref=e240]: Sok Heng · active
+      - generic [ref=e206]:
+        - generic [ref=e241]: 贷款产品
+        - button "⚙ 贷款产品配置" [ref=e242] [cursor=pointer]
+        - button "+ 新合同" [ref=e243] [cursor=pointer]
+    - main [ref=e12]:
+      - generic [ref=e244]:
+        - generic [ref=e245]: 📋
+        - paragraph [ref=e246]: 选择左侧合同查看详情
+  - button "☀" [ref=e190] [cursor=pointer]
