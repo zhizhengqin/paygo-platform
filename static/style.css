@@ -637,11 +637,12 @@ body {
   .nav-tabs {
     display: none; flex-direction: column; gap: 0; padding: 0;
     position: absolute; top: 100%; left: 0; right: 0; z-index: 199;
+    height: auto; width: auto;
     background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     border-bottom: 2px solid var(--border);
     max-height: 60vh; overflow-y: auto;
   }
-  .nav-tabs.open { display: flex; }
+  .nav-tabs.open { display: flex; height: auto !important; min-height: unset !important; max-height: none; }
 
   /* 打开菜单时加半透明遮罩 */
   .nav-overlay { display: none; }
