@@ -24,14 +24,14 @@
   {% endif %}
   {% if request.url.path != '/login' %}
   <nav class="nav-tabs">
-    <a class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">运营仪表盘</a>
-    <a class="nav-tab" data-tab="customers" onclick="switchTab('customers')">客户管理</a>
-    <a class="nav-tab" data-tab="contracts" onclick="switchTab('contracts')">合同管理</a>
-    <a class="nav-tab" data-tab="tokens" onclick="switchTab('tokens')">Token 管理</a>
-    <a class="nav-tab" data-tab="alerts" onclick="switchTab('alerts')">告警中心</a>
-    <a class="nav-tab" data-tab="devicemap" onclick="switchTab('devicemap')">设备地图</a>
-    <a class="nav-tab" data-tab="reports" onclick="switchTab('reports')">报表中心</a>
-    <a class="nav-tab" data-tab="settings" onclick="switchTab('settings')">系统设置</a>
+    <a class="nav-tab active" data-tab="dashboard" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('dashboard');}">运营仪表盘</a>
+    <a class="nav-tab" data-tab="customers" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('customers');}">客户管理</a>
+    <a class="nav-tab" data-tab="contracts" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('contracts');}">合同管理</a>
+    <a class="nav-tab" data-tab="tokens" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('tokens');}">Token 管理</a>
+    <a class="nav-tab" data-tab="alerts" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('alerts');}">告警中心</a>
+    <a class="nav-tab" data-tab="devicemap" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('devicemap');}">设备地图</a>
+    <a class="nav-tab" data-tab="reports" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('reports');}">报表中心</a>
+    <a class="nav-tab" data-tab="settings" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('settings');}">系统设置</a>
   </nav>
   {% endif %}
   {% block content %}{% endblock %}
