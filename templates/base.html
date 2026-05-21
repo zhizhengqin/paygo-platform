@@ -23,17 +23,28 @@
   </nav>
   {% endif %}
   {% if request.url.path != '/login' %}
-  <button class="hamburger-btn" onclick="document.querySelector('.nav-tabs').classList.toggle('open')" title="菜单">☰ 导航</button>
-  <nav class="nav-tabs">
-    <a class="nav-tab active" data-tab="dashboard" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('dashboard');}">运营仪表盘</a>
-    <a class="nav-tab" data-tab="customers" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('customers');}">客户管理</a>
-    <a class="nav-tab" data-tab="contracts" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('contracts');}">合同管理</a>
-    <a class="nav-tab" data-tab="tokens" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('tokens');}">Token 管理</a>
-    <a class="nav-tab" data-tab="alerts" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('alerts');}">告警中心</a>
-    <a class="nav-tab" data-tab="devicemap" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('devicemap');}">设备地图</a>
-    <a class="nav-tab" data-tab="reports" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('reports');}">报表中心</a>
-    <a class="nav-tab" data-tab="settings" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('settings');}">系统设置</a>
-  </nav>
+  <div class="mobile-nav" style="position:relative;">
+    <button class="hamburger-btn" onclick="toggleMobileMenu()" title="菜单">☰ 导航</button>
+    <div class="nav-overlay" id="navOverlay" onclick="toggleMobileMenu()"></div>
+    <nav class="nav-tabs" id="navTabs">
+      <a class="nav-tab active" data-tab="dashboard" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('dashboard');}">运营仪表盘</a>
+      <a class="nav-tab" data-tab="customers" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('customers');}">客户管理</a>
+      <a class="nav-tab" data-tab="contracts" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('contracts');}">合同管理</a>
+      <a class="nav-tab" data-tab="tokens" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('tokens');}">Token 管理</a>
+      <a class="nav-tab" data-tab="alerts" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('alerts');}">告警中心</a>
+      <a class="nav-tab" data-tab="devicemap" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('devicemap');}">设备地图</a>
+      <a class="nav-tab" data-tab="reports" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('reports');}">报表中心</a>
+      <a class="nav-tab" data-tab="settings" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('settings');}">系统设置</a>
+    </nav>
+  </div>
+  <script>
+  function toggleMobileMenu() {
+    var tabs = document.getElementById('navTabs');
+    var overlay = document.getElementById('navOverlay');
+    tabs.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('show');
+  }
+  </script>
   {% endif %}
   {% block content %}{% endblock %}
 </body>
