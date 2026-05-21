@@ -24,6 +24,14 @@ from app.routers.controller import router as controller_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 启动：打印配置信息（密码已脱敏）
+    import logging, re
+    _log = logging.getLogger("paygo.startup")
+    _mask = lambda u: re.sub(r'://[^:]+:[^@]+@', '://***:***@', u) if u else 'NOT SET'
+    from app.settings import REDIS_URL
+    _log.info(f"DATABASE_URL: {_mask(str(engine.url))}")
+    _log.info(f"REDIS_URL: {_mask(REDIS_URL)}")
+
     # 启动：创建表 + 初始化 Redis + 种子数据
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
