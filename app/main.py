@@ -154,6 +154,19 @@ app.include_router(settings_router)
 app.include_router(controller_router)
 
 
+@app.get("/api/seed")
+async def api_seed_demo_data():
+    """一键加载演示数据（无需 Shell）"""
+    import subprocess, sys, os
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    result = subprocess.run(
+        [sys.executable, os.path.join(base, "scripts", "seed_demo_data.py")],
+        capture_output=True, text=True, timeout=60,
+        env={**os.environ, "PYTHONPATH": base}
+    )
+    return {"output": result.stdout, "error": result.stderr, "returncode": result.returncode}
+
+
 @app.get("/api/v1/health")
 async def api_v1_health():
     """API v1 健康检查（云部署探活端点）"""
