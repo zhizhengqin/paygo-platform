@@ -25,8 +25,12 @@ tests/
 cookies.txt
 *.log
 
-# Docs (不需要打入镜像)
-docs/
+# Docs (不需要打入镜像，但保留说明书和截图)
+docs/*
+!docs/项目文档/
+docs/项目文档/*
+!docs/项目文档/平台演示流程手册.md
+!docs/screenshots/
 *.md
 !README.md
 

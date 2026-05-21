@@ -16,6 +16,9 @@ COPY app/ ./app/
 COPY templates/ ./templates/
 COPY static/ ./static/
 COPY scripts/ ./scripts/
+COPY README.md ./
+COPY docs/项目文档/平台演示流程手册.md ./docs/项目文档/
+COPY docs/screenshots/ ./docs/screenshots/
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

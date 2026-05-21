@@ -28,3 +28,16 @@
 [  360411ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/screenshots/07-devicemap.png:0
 [  360411ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/screenshots/09-settings.png:0
 [  360412ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/screenshots/10-lockout.png:0
+[  790134ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/help:28:78)
+[  791826ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/help:29:78)
+[  799921ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/favicon.ico:0
+[  801526ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/help:29:78)
+[  802792ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/help:28:78)
+[  806009ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/help:28:78)
+[  806793ms] ReferenceError: switchTab is not defined
+    at HTMLAnchorElement.onclick (http://localhost:8000/help:29:78)
