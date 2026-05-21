@@ -608,17 +608,39 @@ body {
 }
 
 /* ── 手机端适配 ── */
+.hamburger-btn { display: none; }
+
 @media (max-width: 640px) {
   /* 导航栏 */
-  .navbar { flex-wrap: wrap; padding: 8px 12px; }
+  .navbar { flex-wrap: wrap; padding: 6px 10px; min-height: 36px; }
   .navbar-brand { font-size: 12px; }
   .navbar-title { display: none; }
   .navbar-center { display: none; }
-  .navbar-right { font-size: 12px; }
+  .navbar-right { font-size: 11px; margin-left: auto; }
+  .navbar-right a { margin-right: 6px !important; white-space: nowrap; }
 
-  /* Tab 导航：横向滚动 */
-  .nav-tabs { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 6px 8px; gap: 4px; }
-  .nav-tab { font-size: 12px; padding: 6px 12px; flex-shrink: 0; }
+  /* 汉堡菜单按钮 */
+  .hamburger-btn {
+    display: block; width: 100%; padding: 8px 12px;
+    background: var(--bg); border: none; border-bottom: 1px solid var(--border);
+    font-size: 14px; font-weight: 600; color: var(--text);
+    text-align: left; cursor: pointer; font-family: inherit;
+    position: relative; z-index: 5;
+  }
+  .navbar { position: relative; z-index: 1; }
+
+  /* Tab 导航：默认隐藏，点击汉堡后展开为竖排列表 */
+  .nav-tabs {
+    display: none; flex-direction: column; gap: 0;
+    padding: 0; border-bottom: 1px solid var(--border);
+    max-height: 50vh; overflow-y: auto;
+  }
+  .nav-tabs.open { display: flex; }
+  .nav-tab {
+    width: 100%; text-align: left; padding: 12px 16px; font-size: 14px;
+    border-bottom: 1px solid #f1f5f9; border-radius: 0;
+    flex-shrink: 0; white-space: nowrap;
+  }
 
   /* 左侧面板：全宽覆盖，默认隐藏，点击客户时显示 */
   .main-layout { flex-direction: column; }

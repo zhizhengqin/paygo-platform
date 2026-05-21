@@ -23,6 +23,7 @@
   </nav>
   {% endif %}
   {% if request.url.path != '/login' %}
+  <button class="hamburger-btn" onclick="document.querySelector('.nav-tabs').classList.toggle('open')" title="菜单">☰ 导航</button>
   <nav class="nav-tabs">
     <a class="nav-tab active" data-tab="dashboard" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('dashboard');}">运营仪表盘</a>
     <a class="nav-tab" data-tab="customers" href="/dashboard" onclick="if(typeof switchTab==='function'){event.preventDefault();switchTab('customers');}">客户管理</a>

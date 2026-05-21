@@ -1,0 +1,85 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - generic [ref=e7]:
+      - link "📱 设备模拟器" [ref=e8] [cursor=pointer]:
+        - /url: "#"
+      - link "📖 平台说明书" [ref=e9] [cursor=pointer]:
+        - /url: /help
+      - link "退出" [ref=e10] [cursor=pointer]:
+        - /url: /logout
+  - navigation [ref=e11]:
+    - link "运营仪表盘" [ref=e12] [cursor=pointer]:
+      - /url: /dashboard
+    - link "客户管理" [ref=e13] [cursor=pointer]:
+      - /url: /dashboard
+    - link "合同管理" [ref=e14] [cursor=pointer]:
+      - /url: /dashboard
+    - link "Token 管理" [ref=e15] [cursor=pointer]:
+      - /url: /dashboard
+    - link "告警中心" [ref=e16] [cursor=pointer]:
+      - /url: /dashboard
+    - link "设备地图" [ref=e17] [cursor=pointer]:
+      - /url: /dashboard
+    - link "报表中心" [ref=e18] [cursor=pointer]:
+      - /url: /dashboard
+    - link "系统设置" [ref=e19] [cursor=pointer]:
+      - /url: /dashboard
+  - main [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - heading "运营仪表盘" [level=2] [ref=e24]
+        - generic [ref=e25]:
+          - combobox [ref=e26]:
+            - option "全部 MFI" [selected]
+          - generic [ref=e27]:
+            - button "7天" [ref=e28] [cursor=pointer]
+            - button "30天" [ref=e29] [cursor=pointer]
+            - button "90天" [ref=e30] [cursor=pointer]
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: "8"
+          - generic [ref=e34]: 总客户数
+        - generic [ref=e35]:
+          - generic [ref=e36]: "7"
+          - generic [ref=e37]: 活跃设备
+        - generic [ref=e38]:
+          - generic [ref=e39]: $55
+          - generic [ref=e40]: 本月收入 (USD)
+        - generic [ref=e41]:
+          - generic [ref=e42]: "0"
+          - generic [ref=e43]: 逾期锁定 (0%)
+        - generic [ref=e44]:
+          - generic [ref=e45]: "11"
+          - generic [ref=e46]: 本月 Token 生成
+        - generic [ref=e47]:
+          - generic [ref=e48]: "0"
+          - generic [ref=e49]: 执行中合同
+        - generic [ref=e50]:
+          - generic [ref=e51]: "0"
+          - generic [ref=e52] [cursor=pointer]: 待处理告警
+        - generic [ref=e53]:
+          - generic [ref=e54]: 0%
+          - generic [ref=e55]: 逾期率
+      - generic [ref=e56]:
+        - heading "收入趋势 (近30天)" [level=4] [ref=e58]
+        - heading "Token 生成趋势" [level=4] [ref=e62]
+      - generic [ref=e65]:
+        - heading "告警级别分布" [level=4] [ref=e67]
+        - heading "近7天告警趋势" [level=4] [ref=e71]
+      - generic [ref=e74]:
+        - heading "设备状态分布" [level=4] [ref=e76]
+        - generic [ref=e79]:
+          - heading "最近交易" [level=4] [ref=e80]
+          - table [ref=e81]:
+            - rowgroup [ref=e82]:
+              - row "时间 客户 金额 天数" [ref=e83]:
+                - columnheader "时间" [ref=e84]
+                - columnheader "客户" [ref=e85]
+                - columnheader "金额" [ref=e86]
+                - columnheader "天数" [ref=e87]
+            - rowgroup
+  - button "☀" [ref=e88] [cursor=pointer]
