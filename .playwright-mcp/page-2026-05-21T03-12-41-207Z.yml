@@ -1,0 +1,938 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - img "新华智科技" [ref=e4]
+      - generic [ref=e5]: 新华智科技（柬埔寨）有限公司
+    - generic [ref=e6]: 太阳能即付即用系统
+    - generic [ref=e7]:
+      - link "📱 设备模拟器" [ref=e8] [cursor=pointer]:
+        - /url: "#"
+      - link "📖 平台说明书" [ref=e9] [cursor=pointer]:
+        - /url: /help
+      - link "退出" [ref=e10] [cursor=pointer]:
+        - /url: /logout
+  - navigation [ref=e11]:
+    - generic [ref=e12] [cursor=pointer]: 运营仪表盘
+    - generic [ref=e13] [cursor=pointer]: 客户管理
+    - generic [ref=e14] [cursor=pointer]: 合同管理
+    - generic [ref=e15] [cursor=pointer]: Token 管理
+    - generic [ref=e16] [cursor=pointer]: 告警中心
+    - generic [ref=e17] [cursor=pointer]: 设备地图
+    - generic [ref=e18] [cursor=pointer]: 报表中心
+    - generic [ref=e19] [cursor=pointer]: 系统设置
+  - generic [ref=e20]:
+    - generic [ref=e21]:
+      - button "📖 操作手册" [ref=e22] [cursor=pointer]
+      - button "🎬 演示流程" [ref=e23] [cursor=pointer]
+    - generic [ref=e24]:
+      - heading "PAYGO 太阳能平台 — 运营后台操作手册" [level=1] [ref=e25]
+      - text: 柬埔寨太阳能 PAYGO（Pay-As-You-Go）运营管理平台。通过 MFI 合作，客户分期付款购买太阳能系统，还款后生成 OpenPAYGO Token 延长设备使用期限。
+      - separator [ref=e26]
+      - heading "1. 快速启动" [level=2] [ref=e27]
+      - code [ref=e29]: "# 确保 PostgreSQL 15 和 Redis 8 已运行 cd paygo-platform source venv/bin/activate uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+      - strong [ref=e30]: 访问
+      - text: ：http://localhost:8000/dashboard
+      - strong [ref=e31]: 登录
+      - text: ：
+      - code [ref=e32]: admin
+      - text: /
+      - code [ref=e33]: admin123
+      - blockquote [ref=e34]:
+        - text: 首次启动自动创建 16 张表，种子 5 档贷款产品 + 3 条告警规则 + 支付汇率。运行
+        - code [ref=e35]: scripts/seed_demo_data.py
+        - text: 可加载完整演示数据（4 个客户 + 合同 + 还款记录）。
+      - strong [ref=e36]: 平台顶部导航栏（8 个模块）
+      - text: ：
+      - code [ref=e38]: 运营仪表盘 | 客户管理 | 合同管理 | Token 管理 | 告警中心 | 设备地图 | 报表中心 | 系统设置
+      - separator [ref=e39]
+      - heading "2. 完整业务闭环测试（按角色）" [level=2] [ref=e40]
+      - heading "角色说明" [level=3] [ref=e41]
+      - table [ref=e42]:
+        - rowgroup [ref=e43]:
+          - row "角色 职责 覆盖模块" [ref=e44]:
+            - cell "角色" [ref=e45]
+            - cell "职责" [ref=e46]
+            - cell "覆盖模块" [ref=e47]
+          - row "运营总监 查看全局数据、审批关键操作 仪表盘、报表中心" [ref=e48]:
+            - columnheader "运营总监" [ref=e49]
+            - columnheader "查看全局数据、审批关键操作" [ref=e50]
+            - columnheader "仪表盘、报表中心" [ref=e51]
+          - row "运营专员 日常客户服务、Token 补发、告警处理 客户管理、Token 管理、告警中心" [ref=e52]:
+            - cell "运营专员" [ref=e53]
+            - cell "日常客户服务、Token 补发、告警处理" [ref=e54]
+            - cell "客户管理、Token 管理、告警中心" [ref=e55]
+          - row "业务经理 合同审批、还款跟踪、MFI 管理 合同管理、客户管理" [ref=e56]:
+            - cell "业务经理" [ref=e57]
+            - cell "合同审批、还款跟踪、MFI 管理" [ref=e58]
+            - cell "合同管理、客户管理" [ref=e59]
+          - row "技术支持 设备监控、告警处理、系统健康 设备地图、告警中心、系统设置" [ref=e60]:
+            - cell "技术支持" [ref=e61]
+            - cell "设备监控、告警处理、系统健康" [ref=e62]
+            - cell "设备地图、告警中心、系统设置" [ref=e63]
+      - separator [ref=e64]
+      - heading "2.1 运营总监：每日晨检流程" [level=3] [ref=e65]
+      - strong [ref=e66]: 目标
+      - text: ：3 分钟内掌握平台全局运行状态
+      - heading "步骤 1：打开仪表盘首页" [level=4] [ref=e67]
+      - listitem [ref=e68]: 登录后默认进入「运营仪表盘」
+      - listitem [ref=e69]:
+        - text: 查看
+        - strong [ref=e70]: 8 张 KPI 卡片
+        - text: ：
+      - text: "- 总客户数 / 活跃设备 / 本月收入(USD) / 逾期锁定(率) - 本月 Token 生成 / 执行中合同 / 待处理告警 / 逾期率"
+      - listitem [ref=e71]:
+        - text: 点击右上角时间切换按钮：
+        - strong [ref=e72]: 7天 / 30天 / 90天
+        - text: （默认 30 天）
+      - listitem [ref=e73]: 顶部 MFI 下拉框选择特定机构（可选，默认"全部 MFI"）
+      - heading "步骤 2：查看趋势图表" [level=4] [ref=e74]
+      - listitem [ref=e75]:
+        - strong [ref=e76]: 收入趋势折线图
+        - text: ：观察近 30 天收入波动，判断业务健康度
+      - listitem [ref=e77]:
+        - strong [ref=e78]: Token 生成柱状图
+        - text: ：还款活跃度
+      - listitem [ref=e79]:
+        - strong [ref=e80]: 告警级别饼图
+        - text: ：P0(红)/P1(黄)/P2(蓝) 分布
+      - listitem [ref=e81]:
+        - strong [ref=e82]: 近 7 天告警趋势折线图
+        - text: ：告警是上升还是下降
+      - listitem [ref=e83]:
+        - strong [ref=e84]: 设备状态饼图
+        - text: ：活跃(绿)/逾期锁定(红)/永久解锁(黄)
+      - heading "步骤 3：快速下钻" [level=4] [ref=e85]
+      - listitem [ref=e86]: 点击「待处理告警」卡片 → 跳转告警中心查看详情
+      - listitem [ref=e87]: 点击「逾期锁定」卡片 → 跳转客户管理查看逾期客户
+      - listitem [ref=e88]: 点击「总客户数」→ 跳转客户管理
+      - heading "步骤 4：查看报表（可选）" [level=4] [ref=e89]
+      - listitem [ref=e90]: 点击导航栏「报表中心」
+      - listitem [ref=e91]: 默认显示本月汇总（新增客户/总收入/Token 生成/逾期率）
+      - listitem [ref=e92]:
+        - text: 查看
+        - strong [ref=e93]: ESG 碳减排
+        - text: ：CO₂ 减排量（吨）
+      - listitem [ref=e94]: 选择日期范围 → 点击「查询」可自定义统计周期
+      - listitem [ref=e95]: 点击「导出 CSV」下载报表
+      - separator [ref=e96]
+      - heading "2.2 运营专员：客户服务日常操作" [level=3] [ref=e97]
+      - strong [ref=e98]: 目标
+      - text: ：处理客户咨询、Token 补发、模拟还款
+      - heading "场景 A：新增客户" [level=4] [ref=e99]
+      - listitem [ref=e100]:
+        - text: 点击导航栏「
+        - strong [ref=e101]: 客户管理
+        - text: 」
+      - listitem [ref=e102]:
+        - text: 点击左侧「
+        - strong [ref=e103]: + 新增
+        - text: 」按钮
+      - listitem [ref=e104]: 填写表单：
+      - text: "- 姓名：如"
+      - code [ref=e105]: Chan Dara
+      - text: "- 电话：柬埔寨格式"
+      - code [ref=e106]: "+85512345678"
+      - text: "- 设备编号：如"
+      - code [ref=e107]: SN-KH-005
+      - text: "- 设备密钥：点击「随机」自动生成 32 位 hex，或手动输入"
+      - listitem [ref=e108]: 点击「确认添加」→ 客户出现在左侧列表
+      - heading "场景 B：查看客户 360 视图" [level=4] [ref=e109]
+      - listitem [ref=e110]:
+        - text: 在左侧客户列表
+        - strong [ref=e111]: 搜索框
+        - text: 输入姓名或电话（实时搜索，300ms 防抖）
+      - listitem [ref=e112]: 点击目标客户 → 右侧显示完整 360 视图：
+      - text: "-"
+      - strong [ref=e113]: 基本信息
+      - text: ：姓名、电话、设备编号、密钥(部分隐藏)、地址、身份证、GPS、MFI -
+      - strong [ref=e114]: 标签管理
+      - text: ：查看现有标签，点击「+ 添加标签」输入 VIP/高风险/新客户/投诉频繁 -
+      - strong [ref=e115]: 模拟支付
+      - text: ：下拉选择金额 -
+      - strong [ref=e116]: 合同列表
+      - text: ：每个合同显示编号+状态+贷款金额（可点击跳转合同详情） -
+      - strong [ref=e117]: Token 历史时间线
+      - text: ：最多 15 条，⚪未使用/🟢已使用/🔴已作废
+      - listitem [ref=e118]: 如果该客户有逾期合同，会显示红色「X 个合同已逾期」提醒
+      - heading "场景 C：模拟支付（生成 Token）" [level=4] [ref=e119]
+      - listitem [ref=e120]: 选中客户，在详情面板找到「模拟支付」
+      - listitem [ref=e121]:
+        - text: 下拉选择金额：
+        - strong [ref=e122]: $5.00 → 30天
+        - text: 或
+        - strong [ref=e123]: $10.00 → 60天
+      - listitem [ref=e124]: 点击「确认支付」
+      - listitem [ref=e125]: 弹窗显示：
+      - text: "-"
+      - strong [ref=e126]: 9 位 OpenPAYGO Token
+      - text: （如
+      - code [ref=e127]: "023554141"
+      - text: ） -
+      - strong [ref=e128]: 模拟短信内容
+      - text: （收件人电话 + Token + 有效天数）
+      - listitem [ref=e129]: 点击「完成」→ 客户详情自动刷新
+      - heading "场景 D：模拟还款（通过合同）" [level=4] [ref=e130]
+      - listitem [ref=e131]: 切换到「合同管理」→ 选择一个「执行中」的合同
+      - listitem [ref=e132]: 在「模拟还款」区看到待还期数按钮
+      - listitem [ref=e133]:
+        - text: 点击
+        - strong [ref=e134]: 第 N 期 · $XX.XX · 日期
+      - listitem [ref=e135]: 弹窗显示 ADD_TIME Token（30 天）
+      - listitem [ref=e136]: 观察还款进度条变化（绿色增加）
+      - heading "场景 E：Token 补发（客户反馈未收到 SMS）" [level=4] [ref=e137]
+      - listitem [ref=e138]:
+        - text: 切换到「
+        - strong [ref=e139]: Token 管理
+        - text: 」
+      - listitem [ref=e140]: 左侧列表找到目标 Token（可按状态筛选，⚪=未使用）
+      - listitem [ref=e141]: 点击 Token → 右侧显示详情（Token 值/类型/客户/金额/Counter/时间/关联合同）
+      - listitem [ref=e142]:
+        - text: 状态为「未使用」的 Token，点击「
+        - strong [ref=e143]: 补发 Token
+        - text: 」
+      - listitem [ref=e144]: 确认弹窗 → 新 Token 生成（Counter+1），原 Token 标记「已作废」
+      - listitem [ref=e145]: "Toast 提示「新 Token 已生成: XXXXXXXX」"
+      - heading "场景 F：Token 作废（安全事件）" [level=4] [ref=e146]
+      - listitem [ref=e147]:
+        - text: 在 Token 详情页，点击「
+        - strong [ref=e148]: 作废 Token
+        - text: 」
+      - listitem [ref=e149]: 输入作废原因（如"客户投诉 Token 泄露"）
+      - listitem [ref=e150]: Token 状态变为 SUPERSEDED，记录操作人和原因
+      - separator [ref=e151]
+      - heading "2.3 业务经理：合同全生命周期管理" [level=3] [ref=e152]
+      - strong [ref=e153]: 目标
+      - text: ：走通签合同 → 审批 → 还款 → 结清完整流程
+      - heading "主流程：从头创建并执行一份合同" [level=4] [ref=e154]
+      - strong [ref=e155]: 第 1 步：确认贷款产品
+      - listitem [ref=e156]: 切换到「合同管理」
+      - listitem [ref=e157]:
+        - text: 点击左侧「
+        - strong [ref=e158]: ⚙ 贷款产品配置
+        - text: 」
+      - listitem [ref=e159]: 确认 5 档产品存在（6kW-12月 ~ 30kW-36月）
+      - strong [ref=e160]: 第 2 步：创建合同
+      - listitem [ref=e161]:
+        - text: 点击「
+        - strong [ref=e162]: + 新合同
+        - text: 」
+      - listitem [ref=e163]: 选择客户（需先在客户管理中创建）
+      - listitem [ref=e164]: 选择贷款产品
+      - listitem [ref=e165]:
+        - text: 点击「确认创建」→ 合同编号自动生成（如
+        - code [ref=e166]: KH-2026-00001
+        - text: ），状态=草稿
+      - strong [ref=e167]: 第 3 步：审批通过
+      - listitem [ref=e168]: 点击合同 → 右侧显示详情
+      - listitem [ref=e169]:
+        - text: 点击「
+        - strong [ref=e170]: 审批通过
+        - text: 」
+      - listitem [ref=e171]: 合同状态变为「执行中」
+      - listitem [ref=e172]:
+        - text: 自动生成
+        - strong [ref=e173]: 等额本息还款计划表
+        - text: ：
+      - text: "- 每期显示：期数 / 应还日 / 月供 / 本金 / 利息 / 剩余本金 / 状态(⏳待还)"
+      - listitem [ref=e174]:
+        - text: 还款进度条显示
+        - code [ref=e175]: 0 / N 期 · 0%
+      - strong [ref=e176]: 第 4 步：模拟还款（第 1 期）
+      - listitem [ref=e177]:
+        - text: 在「模拟还款」区点击「
+        - strong [ref=e178]: 第 1 期 · $XX.XX
+        - text: 」
+      - listitem [ref=e179]: 弹窗显示 ADD_TIME Token 和模拟短信
+      - listitem [ref=e180]:
+        - text: 还款进度条更新为
+        - code [ref=e181]: 1 / N 期 · X%
+      - listitem [ref=e182]:
+        - text: 还款计划表中该期状态变为
+        - strong [ref=e183]: 已付
+      - strong [ref=e184]: 第 5 步：检测逾期
+      - listitem [ref=e185]:
+        - text: 如果某期到期未付，点击「
+        - strong [ref=e186]: 检测逾期
+        - text: 」按钮
+      - listitem [ref=e187]: 系统自动：
+      - text: "- 将到期未付期数标记为「逾期」 - 合同状态变为「逾期」 - 关联客户设备自动「锁定」"
+      - listitem [ref=e188]: Toast 提示「检测到 N 条逾期计划」
+      - strong [ref=e189]: 第 6 步：提前结清
+      - listitem [ref=e190]: 合同处于「执行中」或「逾期」状态
+      - listitem [ref=e191]:
+        - text: 点击「
+        - strong [ref=e192]: 提前结清
+        - text: 」→ 确认弹窗
+      - listitem [ref=e193]: 系统自动：
+      - text: "- 生成"
+      - strong [ref=e194]: DISABLE_PAYG Token
+      - text: （永久解锁码） - 所有未付期数标记为已付 - 合同状态 → closed - 客户状态 → permanent（永久解锁）
+      - heading "合同状态流转图" [level=4] [ref=e195]
+      - code [ref=e197]: draft（草稿）→ active（执行中）→ overdue（逾期）→ closed（已结清） ↓ ↓ recovered（回收） recovered（回收）
+      - separator [ref=e198]
+      - heading "2.4 设备控制器模拟（Web + 终端双模式）" [level=3] [ref=e199]
+      - strong [ref=e200]: 目标
+      - text: ：模拟 PAYGO Dongle 硬件行为，验证 Token 输入→设备解锁/续期的完整链路
+      - heading "Web 版模拟器（推荐，安卓手机可用）" [level=4] [ref=e201]
+      - listitem [ref=e202]:
+        - text: 点击导航栏右上角「
+        - strong [ref=e203]: 📱 设备模拟器
+        - text: 」或直接访问
+        - code [ref=e204]: /controller
+      - listitem [ref=e205]: 页面展示深色终端风格界面
+      - listitem [ref=e206]:
+        - text: 下拉选择要模拟的设备（如
+        - code [ref=e207]: Sok Heng · DEV-KH-001
+        - text: ）
+      - strong [ref=e208]: 界面显示
+      - text: ：
+      - code [ref=e210]: ── 太阳能控制器 ────────────────── 设备 DEV-KH-001 客户 Sok Heng 密钥 a1b2c3d4… 状态 已激活 Count 4 继电器 ● 供电中
+      - strong [ref=e211]: 输入 Token 验证
+      - text: ：
+      - listitem [ref=e212]:
+        - text: 在平台完成一笔模拟支付 → 获得 9 位 Token（如
+        - code [ref=e213]: "023554141"
+        - text: ）
+      - listitem [ref=e214]: 在控制器页面的输入框输入 Token
+      - listitem [ref=e215]: 点击「验证 Token」或按回车
+      - listitem [ref=e216]:
+        - text: 验证成功：
+        - code [ref=e217]: ✓ 验证成功 · +30 天
+        - text: （见下方截图）
+      - img "控制器验证成功" [ref=e218]
+      - listitem [ref=e219]:
+        - text: 重复输入同一 Token →
+        - code [ref=e220]: ✗ Token 已使用（防重放）
+      - img "控制器防重放" [ref=e221]
+      - listitem [ref=e222]:
+        - text: DISABLE_PAYG Token：
+        - code [ref=e223]: ✓✓ 贷款已结清 · 设备永久解锁
+      - strong [ref=e224]: 安卓手机访问
+      - text: ：
+      - code [ref=e226]:
+        - text: 1. 手机连接与服务器同一 WiFi
+        - listitem [ref=e227]: 浏览器打开 http://<服务器局域网IP>:8000/controller
+        - listitem [ref=e228]: 登录平台 → 选择设备 → 输入 Token
+      - heading "终端模拟器（桌面开发调试）" [level=4] [ref=e229]
+      - code [ref=e231]: cd paygo-platform source venv/bin/activate cd controller && python controller.py
+      - text: 终端界面提供完整的 Dongle 模拟：
+      - listitem [ref=e232]: 初始设置输入 32 位 hex 密钥
+      - listitem [ref=e233]: N 键输入 9 位 Token → 本地 OpenPAYGO 解码验证
+      - listitem [ref=e234]: D 键快进天数（模拟时间流逝）
+      - listitem [ref=e235]: R 键重置设备
+      - listitem [ref=e236]: 实时显示：密钥/状态/剩余天数/继电器/Count
+      - separator [ref=e237]
+      - heading "2.5 告警处理（运营专员 + 技术支持）" [level=3] [ref=e238]
+      - strong [ref=e239]: 目标
+      - text: ：处理平台告警，走通认领→处理→关闭工作流
+      - heading "场景：逾期告警触发→处理" [level=4] [ref=e240]
+      - listitem [ref=e241]: 首先确保有逾期合同（合同管理 → 检测逾期）
+      - listitem [ref=e242]:
+        - text: 切换到「
+        - strong [ref=e243]: 告警中心
+        - text: 」
+      - listitem [ref=e244]: 左侧告警列表按级别排序（P0 红色 / P1 黄色 / P2 蓝色 优先）
+      - listitem [ref=e245]: 左侧底部显示统计：
+      - text: "- 总数 / 今日 / 待处理 / 已关闭"
+      - strong [ref=e246]: 处理一条告警：
+      - listitem [ref=e247]: 点击一条「待处理」告警
+      - listitem [ref=e248]: 右侧显示详情：
+      - text: "- 级别 + 标题 + 详情描述 - 规则编码（ALM-001/002/003） - 触发时间 - 关联合同 ID + 客户 ID"
+      - listitem [ref=e249]:
+        - text: 点击「
+        - strong [ref=e250]: 认领告警
+        - text: 」→ 状态变为「已认领」，记录认领人
+      - listitem [ref=e251]: 实际处理（电话联系客户等）
+      - listitem [ref=e252]:
+        - text: 点击「
+        - strong [ref=e253]: 标记解决
+        - text: 」→ 输入解决备注（如"已联系客户，承诺明日还款"）
+      - listitem [ref=e254]: 告警状态变为「已关闭」
+      - strong [ref=e255]: 升级告警：
+      - listitem [ref=e256]:
+        - text: 对于 P1 或 P2 告警，点击「
+        - strong [ref=e257]: 升级
+        - text: 」
+      - listitem [ref=e258]: P2 → P1，P1 → P0
+      - listitem [ref=e259]: 操作日志记录升级事件
+      - strong [ref=e260]: 查看操作日志：
+      - listitem [ref=e261]: 告警详情底部显示完整操作时间线：触发 → 认领 → 升级 → 解决
+      - separator [ref=e262]
+      - heading "2.6 技术支持：设备地图监控" [level=3] [ref=e263]
+      - strong [ref=e264]: 目标
+      - text: ：通过地图直观监控所有设备状态
+      - listitem [ref=e265]:
+        - text: 切换到「
+        - strong [ref=e266]: 设备地图
+        - text: 」
+      - listitem [ref=e267]: 地图自动定位到柬埔寨全境（Leaflet + OpenStreetMap）
+      - listitem [ref=e268]:
+        - text: 有 GPS 坐标的设备以
+        - strong [ref=e269]: 彩色圆点
+        - text: 标注：
+      - text: "- 🟢 绿色 = 活跃 - 🔴 红色 = 逾期锁定 - 🟡 黄色 = 永久解锁"
+      - strong [ref=e270]: 图层切换
+      - text: ：
+      - listitem [ref=e271]: 点击顶部按钮：全部 / 活跃 / 逾期锁定 / 永久解锁 → 过滤标注点
+      - strong [ref=e272]: 设备搜索
+      - text: ：
+      - listitem [ref=e273]: 在搜索框输入设备序列号或客户名 → 单结果自动聚焦 zoom 14
+      - strong [ref=e274]: 设备弹窗
+      - text: ：
+      - listitem [ref=e275]: 点击标注点 → Popup 显示：客户名、设备编号、状态
+      - separator [ref=e276]
+      - heading "2.7 系统管理员：系统设置" [level=3] [ref=e277]
+      - strong [ref=e278]: 目标
+      - text: ：管理平台基础配置和用户
+      - listitem [ref=e279]:
+        - text: 切换到「
+        - strong [ref=e280]: 系统设置
+        - text: 」
+      - strong [ref=e281]: 系统健康检查
+      - text: ：
+      - listitem [ref=e282]: 查看数据库状态（ok/error）
+      - listitem [ref=e283]: 查看 Redis 状态
+      - listitem [ref=e284]: 整体状态：ok / degraded
+      - strong [ref=e285]: MFI 机构管理
+      - text: ：
+      - listitem [ref=e286]: 查看已有 MFI 列表
+      - listitem [ref=e287]: 输入名称 + 支行 → 点击「新增」
+      - strong [ref=e288]: 支付汇率管理
+      - text: ：
+      - listitem [ref=e289]: 查看当前汇率映射（金额 → 天数）
+      - strong [ref=e290]: 用户管理
+      - text: ：
+      - listitem [ref=e291]: 查看已有用户（用户名 + 角色）
+      - listitem [ref=e292]: 输入用户名 + 密码 + 选择角色 → 点击「新增」
+      - listitem [ref=e293]: 可用角色：运营专员 / 运营主管 / 技术支持 / 只读
+      - separator [ref=e294]
+      - heading "3. 完整业务闭环走通验证清单" [level=2] [ref=e295]
+      - text: 按以下顺序逐一操作，验证平台全部功能：
+      - code [ref=e297]: □ 1. [仪表盘] 登录 → 首页 8 张 KPI 卡片正常显示 □ 2. [仪表盘] ECharts 图表渲染（收入/Token/告警/设备） □ 3. [仪表盘] 时间切换 7天/30天，数据刷新 □ 4. [客户管理] 新增客户（姓名+电话+设备编号+随机密钥） □ 5. [客户管理] 搜索框输入客户姓名 → 筛选正常 □ 6. [客户管理] 点击客户 → 360 视图正常展示 □ 7. [客户管理] 添加标签 "VIP" → 标签显示在详情和列表 □ 8. [客户管理] 模拟支付 $5 → Token 弹窗展示 □ 9. [合同管理] 切换 tab → 合同列表显示 □ 10. [合同管理] 查看贷款产品配置 → 5 档产品存在 □ 11. [合同管理] 创建合同（选客户+产品）→ 草稿状态 □ 12. [合同管理] 审批通过 → 还款计划表生成 □ 13. [合同管理] 模拟还款第1期 → Token 生成，进度条更新 □ 14. [合同管理] 点击检测逾期 → 逾期合同标记 □ 15. [合同管理] 提前结清 → DISABLE_PAYG Token 生成 □ 15a.[控制器] 打开 /controller → 选择设备 → 输入 Token → 验证成功 □ 15b.[控制器] 尝试输入已使用 Token → 防重放拒绝 □ 15c.[控制器] DISABLE_PAYG Token → 永久解锁提示 □ 16. [Token管理] 切换 tab → Token 列表显示 □ 17. [Token管理] 查看统计卡片（总数/今日/本月/已作废） □ 18. [Token管理] 点击 Token 查看详情 □ 19. [Token管理] 作废 Token → 输入原因 → 状态变化 □ 20. [Token管理] 补发 Token → 新 Token 生成 □ 21. [Token管理] 批量生成 → 生成成功 □ 22. [告警中心] 切换 tab → 告警列表显示（3 条种子规则） □ 23. [告警中心] 点击告警 → 详情 + 操作日志 □ 24. [告警中心] 认领 → 标记解决 → 升级 工作流正常 □ 25. [设备地图] 切换 tab → Leaflet 地图渲染 □ 26. [设备地图] 图层切换（全部/活跃/逾期/永久）正常 □ 27. [设备地图] 搜索设备序列号 → 自动定位 □ 28. [报表中心] 切换 tab → 报表汇总正常 □ 29. [报表中心] ESG 碳减排数据显示 □ 30. [报表中心] CSV 导出下载正常 □ 31. [系统设置] 切换 tab → 健康检查状态正常 □ 32. [系统设置] 新增 MFI 机构 □ 33. [系统设置] 新增用户 □ 34. [登录] 登出 → 重新登录 → session 正常 □ 35. [登录] 连续 5 次错误密码 → 账户锁定提示
+      - separator [ref=e298]
+      - heading "4. 演示数据加载" [level=2] [ref=e299]
+      - code [ref=e301]: cd paygo-platform source venv/bin/activate PYTHONPATH="." python scripts/seed_demo_data.py
+      - heading "演示数据概览" [level=3] [ref=e302]
+      - table [ref=e303]:
+        - rowgroup [ref=e304]:
+          - row "指标 值" [ref=e305]:
+            - cell "指标" [ref=e306]
+            - cell "值" [ref=e307]
+          - row "总客户数 4" [ref=e308]:
+            - columnheader "总客户数" [ref=e309]
+            - columnheader "4" [ref=e310]
+          - row "活跃设备 2" [ref=e311]:
+            - cell "活跃设备" [ref=e312]
+            - cell "2" [ref=e313]
+          - row "逾期锁定 1" [ref=e314]:
+            - cell "逾期锁定" [ref=e315]
+            - cell "1" [ref=e316]
+          - row "贷款产品 5 档（6kW ~ 30kW）" [ref=e317]:
+            - cell "贷款产品" [ref=e318]
+            - cell "5 档（6kW ~ 30kW）" [ref=e319]
+          - row "合同 3 份（含还款计划）" [ref=e320]:
+            - cell "合同" [ref=e321]
+            - cell "3 份（含还款计划）" [ref=e322]
+      - table [ref=e323]:
+        - rowgroup [ref=e324]:
+          - row "客户 电话 设备 合同 状态" [ref=e325]:
+            - cell "客户" [ref=e326]
+            - cell "电话" [ref=e327]
+            - cell "设备" [ref=e328]
+            - cell "合同" [ref=e329]
+            - cell "状态" [ref=e330]
+          - row "Sok Heng 0888888001 DEV-KH-001 10kW-24月 🟢 活跃（还款中）" [ref=e331]:
+            - columnheader "Sok Heng" [ref=e332]
+            - columnheader "0888888001" [ref=e333]
+            - columnheader "DEV-KH-001" [ref=e334]
+            - columnheader "10kW-24月" [ref=e335]
+            - columnheader "🟢 活跃（还款中）" [ref=e336]
+          - row "Alice 011222333 DEV-KH-002 6kW-12月 🟢 活跃（还款中）" [ref=e337]:
+            - cell "Alice" [ref=e338]
+            - cell "011222333" [ref=e339]
+            - cell "DEV-KH-002" [ref=e340]
+            - cell "6kW-12月" [ref=e341]
+            - cell "🟢 活跃（还款中）" [ref=e342]
+          - row "Bob 044555666 DEV-KH-003 15kW-24月 🔴 逾期锁定" [ref=e343]:
+            - cell "Bob" [ref=e344]
+            - cell "044555666" [ref=e345]
+            - cell "DEV-KH-003" [ref=e346]
+            - cell "15kW-24月" [ref=e347]
+            - cell "🔴 逾期锁定" [ref=e348]
+          - row "Sarun 077123456 DEV-KH-004 无 ⚪ 待签约" [ref=e349]:
+            - cell "Sarun" [ref=e350]
+            - cell "077123456" [ref=e351]
+            - cell "DEV-KH-004" [ref=e352]
+            - cell "无" [ref=e353]
+            - cell "⚪ 待签约" [ref=e354]
+      - separator [ref=e355]
+      - heading "5. API 接口速查" [level=2] [ref=e356]
+      - text: 所有接口需先登录。认证方式：Session Cookie 或 JWT Bearer Token。
+      - heading "5.1 仪表盘" [level=3] [ref=e357]
+      - table [ref=e358]:
+        - rowgroup [ref=e359]:
+          - row "方法 路径 说明" [ref=e360]:
+            - cell "方法" [ref=e361]
+            - cell "路径" [ref=e362]
+            - cell "说明" [ref=e363]
+          - row "GET /api/dashboard/stats 基础 KPI" [ref=e364]:
+            - columnheader "GET" [ref=e365]
+            - columnheader "/api/dashboard/stats" [ref=e366]:
+              - code [ref=e367]: /api/dashboard/stats
+            - columnheader "基础 KPI" [ref=e368]
+          - row "GET /api/dashboard/enhanced-stats?days=30 增强统计（含趋势）" [ref=e369]:
+            - cell "GET" [ref=e370]
+            - cell "/api/dashboard/enhanced-stats?days=30" [ref=e371]:
+              - code [ref=e372]: /api/dashboard/enhanced-stats?days=30
+            - cell "增强统计（含趋势）" [ref=e373]
+      - heading "5.2 客户管理" [level=3] [ref=e374]
+      - table [ref=e375]:
+        - rowgroup [ref=e376]:
+          - row "方法 路径 说明" [ref=e377]:
+            - cell "方法" [ref=e378]
+            - cell "路径" [ref=e379]
+            - cell "说明" [ref=e380]
+          - row "GET /api/customers?search=&status=&mfi_id= 客户列表（筛选）" [ref=e381]:
+            - columnheader "GET" [ref=e382]
+            - columnheader "/api/customers?search=&status=&mfi_id=" [ref=e383]:
+              - code [ref=e384]: /api/customers?search=&status=&mfi_id=
+            - columnheader "客户列表（筛选）" [ref=e385]
+          - row "POST /api/customers 新增客户" [ref=e386]:
+            - cell "POST" [ref=e387]
+            - cell "/api/customers" [ref=e388]:
+              - code [ref=e389]: /api/customers
+            - cell "新增客户" [ref=e390]
+          - 'row "GET /api/customers/{id} 客户详情" [ref=e391]':
+            - cell "GET" [ref=e392]
+            - 'cell "/api/customers/{id}" [ref=e393]':
+              - code [ref=e394]: "/api/customers/{id}"
+            - cell "客户详情" [ref=e395]
+          - 'row "GET /api/customers/{id}/360 客户 360 聚合视图" [ref=e396]':
+            - cell "GET" [ref=e397]
+            - 'cell "/api/customers/{id}/360" [ref=e398]':
+              - code [ref=e399]: "/api/customers/{id}/360"
+            - cell "客户 360 聚合视图" [ref=e400]
+          - 'row "DELETE /api/customers/{id} 删除客户" [ref=e401]':
+            - cell "DELETE" [ref=e402]
+            - 'cell "/api/customers/{id}" [ref=e403]':
+              - code [ref=e404]: "/api/customers/{id}"
+            - cell "删除客户" [ref=e405]
+          - 'row "POST /api/customers/{id}/simulate-payment 模拟支付" [ref=e406]':
+            - cell "POST" [ref=e407]
+            - 'cell "/api/customers/{id}/simulate-payment" [ref=e408]':
+              - code [ref=e409]: "/api/customers/{id}/simulate-payment"
+            - cell "模拟支付" [ref=e410]
+          - 'row "POST /api/customers/{id}/lock 锁定设备" [ref=e411]':
+            - cell "POST" [ref=e412]
+            - 'cell "/api/customers/{id}/lock" [ref=e413]':
+              - code [ref=e414]: "/api/customers/{id}/lock"
+            - cell "锁定设备" [ref=e415]
+          - 'row "POST /api/customers/{id}/permanent-unlock 永久解锁" [ref=e416]':
+            - cell "POST" [ref=e417]
+            - 'cell "/api/customers/{id}/permanent-unlock" [ref=e418]':
+              - code [ref=e419]: "/api/customers/{id}/permanent-unlock"
+            - cell "永久解锁" [ref=e420]
+          - 'row "PUT /api/customers/{id}/tags 更新标签" [ref=e421]':
+            - cell "PUT" [ref=e422]
+            - 'cell "/api/customers/{id}/tags" [ref=e423]':
+              - code [ref=e424]: "/api/customers/{id}/tags"
+            - cell "更新标签" [ref=e425]
+          - row "GET /api/devices/geo 设备地图数据" [ref=e426]:
+            - cell "GET" [ref=e427]
+            - cell "/api/devices/geo" [ref=e428]:
+              - code [ref=e429]: /api/devices/geo
+            - cell "设备地图数据" [ref=e430]
+      - heading "5.3 合同管理" [level=3] [ref=e431]
+      - table [ref=e432]:
+        - rowgroup [ref=e433]:
+          - row "方法 路径 说明" [ref=e434]:
+            - cell "方法" [ref=e435]
+            - cell "路径" [ref=e436]
+            - cell "说明" [ref=e437]
+          - row "GET /api/loan-products 贷款产品列表" [ref=e438]:
+            - columnheader "GET" [ref=e439]
+            - columnheader "/api/loan-products" [ref=e440]:
+              - code [ref=e441]: /api/loan-products
+            - columnheader "贷款产品列表" [ref=e442]
+          - row "POST /api/loan-products 新增产品" [ref=e443]:
+            - cell "POST" [ref=e444]
+            - cell "/api/loan-products" [ref=e445]:
+              - code [ref=e446]: /api/loan-products
+            - cell "新增产品" [ref=e447]
+          - row "GET /api/contracts 合同列表" [ref=e448]:
+            - cell "GET" [ref=e449]
+            - cell "/api/contracts" [ref=e450]:
+              - code [ref=e451]: /api/contracts
+            - cell "合同列表" [ref=e452]
+          - row "POST /api/contracts 创建合同" [ref=e453]:
+            - cell "POST" [ref=e454]
+            - cell "/api/contracts" [ref=e455]:
+              - code [ref=e456]: /api/contracts
+            - cell "创建合同" [ref=e457]
+          - 'row "GET /api/contracts/{id} 合同详情（含还款计划）" [ref=e458]':
+            - cell "GET" [ref=e459]
+            - 'cell "/api/contracts/{id}" [ref=e460]':
+              - code [ref=e461]: "/api/contracts/{id}"
+            - cell "合同详情（含还款计划）" [ref=e462]
+          - 'row "PUT /api/contracts/{id}/approve 审批通过" [ref=e463]':
+            - cell "PUT" [ref=e464]
+            - 'cell "/api/contracts/{id}/approve" [ref=e465]':
+              - code [ref=e466]: "/api/contracts/{id}/approve"
+            - cell "审批通过" [ref=e467]
+          - 'row "PUT /api/contracts/{id}/status 状态变更" [ref=e468]':
+            - cell "PUT" [ref=e469]
+            - 'cell "/api/contracts/{id}/status" [ref=e470]':
+              - code [ref=e471]: "/api/contracts/{id}/status"
+            - cell "状态变更" [ref=e472]
+          - 'row "POST /api/contracts/{id}/pay 还款一期" [ref=e473]':
+            - cell "POST" [ref=e474]
+            - 'cell "/api/contracts/{id}/pay" [ref=e475]':
+              - code [ref=e476]: "/api/contracts/{id}/pay"
+            - cell "还款一期" [ref=e477]
+          - row "POST /api/contracts/check-overdue 检测逾期" [ref=e478]:
+            - cell "POST" [ref=e479]
+            - cell "/api/contracts/check-overdue" [ref=e480]:
+              - code [ref=e481]: /api/contracts/check-overdue
+            - cell "检测逾期" [ref=e482]
+          - 'row "POST /api/contracts/{id}/settle 提前结清" [ref=e483]':
+            - cell "POST" [ref=e484]
+            - 'cell "/api/contracts/{id}/settle" [ref=e485]':
+              - code [ref=e486]: "/api/contracts/{id}/settle"
+            - cell "提前结清" [ref=e487]
+      - heading "5.4 Token 管理" [level=3] [ref=e488]
+      - table [ref=e489]:
+        - rowgroup [ref=e490]:
+          - row "方法 路径 说明" [ref=e491]:
+            - cell "方法" [ref=e492]
+            - cell "路径" [ref=e493]
+            - cell "说明" [ref=e494]
+          - row "GET /api/tokens?customer_id=&status=&limit= Token 列表" [ref=e495]:
+            - columnheader "GET" [ref=e496]
+            - columnheader "/api/tokens?customer_id=&status=&limit=" [ref=e497]:
+              - code [ref=e498]: /api/tokens?customer_id=&status=&limit=
+            - columnheader "Token 列表" [ref=e499]
+          - row "GET /api/tokens/stats Token 统计" [ref=e500]:
+            - cell "GET" [ref=e501]
+            - cell "/api/tokens/stats" [ref=e502]:
+              - code [ref=e503]: /api/tokens/stats
+            - cell "Token 统计" [ref=e504]
+          - 'row "GET /api/tokens/{id} Token 详情" [ref=e505]':
+            - cell "GET" [ref=e506]
+            - 'cell "/api/tokens/{id}" [ref=e507]':
+              - code [ref=e508]: "/api/tokens/{id}"
+            - cell "Token 详情" [ref=e509]
+          - 'row "POST /api/tokens/{id}/reissue 补发 Token" [ref=e510]':
+            - cell "POST" [ref=e511]
+            - 'cell "/api/tokens/{id}/reissue" [ref=e512]':
+              - code [ref=e513]: "/api/tokens/{id}/reissue"
+            - cell "补发 Token" [ref=e514]
+          - 'row "POST /api/tokens/{id}/void 作废 Token" [ref=e515]':
+            - cell "POST" [ref=e516]
+            - 'cell "/api/tokens/{id}/void" [ref=e517]':
+              - code [ref=e518]: "/api/tokens/{id}/void"
+            - cell "作废 Token" [ref=e519]
+          - row "POST /api/tokens/batch-generate 批量生成" [ref=e520]:
+            - cell "POST" [ref=e521]
+            - cell "/api/tokens/batch-generate" [ref=e522]:
+              - code [ref=e523]: /api/tokens/batch-generate
+            - cell "批量生成" [ref=e524]
+      - heading "5.5 告警中心" [level=3] [ref=e525]
+      - table [ref=e526]:
+        - rowgroup [ref=e527]:
+          - row "方法 路径 说明" [ref=e528]:
+            - cell "方法" [ref=e529]
+            - cell "路径" [ref=e530]
+            - cell "说明" [ref=e531]
+          - row "GET /api/alerts/rules 告警规则" [ref=e532]:
+            - columnheader "GET" [ref=e533]
+            - columnheader "/api/alerts/rules" [ref=e534]:
+              - code [ref=e535]: /api/alerts/rules
+            - columnheader "告警规则" [ref=e536]
+          - row "GET /api/alerts/stats 告警统计" [ref=e537]:
+            - cell "GET" [ref=e538]
+            - cell "/api/alerts/stats" [ref=e539]:
+              - code [ref=e540]: /api/alerts/stats
+            - cell "告警统计" [ref=e541]
+          - row "GET /api/alerts?status=&level= 告警列表" [ref=e542]:
+            - cell "GET" [ref=e543]
+            - cell "/api/alerts?status=&level=" [ref=e544]:
+              - code [ref=e545]: /api/alerts?status=&level=
+            - cell "告警列表" [ref=e546]
+          - row "POST /api/alerts 创建告警" [ref=e547]:
+            - cell "POST" [ref=e548]
+            - cell "/api/alerts" [ref=e549]:
+              - code [ref=e550]: /api/alerts
+            - cell "创建告警" [ref=e551]
+          - 'row "GET /api/alerts/{id} 告警详情（含日志）" [ref=e552]':
+            - cell "GET" [ref=e553]
+            - 'cell "/api/alerts/{id}" [ref=e554]':
+              - code [ref=e555]: "/api/alerts/{id}"
+            - cell "告警详情（含日志）" [ref=e556]
+          - 'row "POST /api/alerts/{id}/claim 认领" [ref=e557]':
+            - cell "POST" [ref=e558]
+            - 'cell "/api/alerts/{id}/claim" [ref=e559]':
+              - code [ref=e560]: "/api/alerts/{id}/claim"
+            - cell "认领" [ref=e561]
+          - 'row "POST /api/alerts/{id}/resolve 解决" [ref=e562]':
+            - cell "POST" [ref=e563]
+            - 'cell "/api/alerts/{id}/resolve" [ref=e564]':
+              - code [ref=e565]: "/api/alerts/{id}/resolve"
+            - cell "解决" [ref=e566]
+          - 'row "POST /api/alerts/{id}/escalate 升级" [ref=e567]':
+            - cell "POST" [ref=e568]
+            - 'cell "/api/alerts/{id}/escalate" [ref=e569]':
+              - code [ref=e570]: "/api/alerts/{id}/escalate"
+            - cell "升级" [ref=e571]
+      - heading "5.6 MFI + 报表 + 设置" [level=3] [ref=e572]
+      - table [ref=e573]:
+        - rowgroup [ref=e574]:
+          - row "方法 路径 说明" [ref=e575]:
+            - cell "方法" [ref=e576]
+            - cell "路径" [ref=e577]
+            - cell "说明" [ref=e578]
+          - row "GET /api/mfis MFI 列表" [ref=e579]:
+            - columnheader "GET" [ref=e580]
+            - columnheader "/api/mfis" [ref=e581]:
+              - code [ref=e582]: /api/mfis
+            - columnheader "MFI 列表" [ref=e583]
+          - row "POST /api/mfis 新增 MFI" [ref=e584]:
+            - cell "POST" [ref=e585]
+            - cell "/api/mfis" [ref=e586]:
+              - code [ref=e587]: /api/mfis
+            - cell "新增 MFI" [ref=e588]
+          - row "GET /api/reports/summary?start_date=&end_date= 报表汇总" [ref=e589]:
+            - cell "GET" [ref=e590]
+            - cell "/api/reports/summary?start_date=&end_date=" [ref=e591]:
+              - code [ref=e592]: /api/reports/summary?start_date=&end_date=
+            - cell "报表汇总" [ref=e593]
+          - row "GET /api/reports/esg ESG 碳减排" [ref=e594]:
+            - cell "GET" [ref=e595]
+            - cell "/api/reports/esg" [ref=e596]:
+              - code [ref=e597]: /api/reports/esg
+            - cell "ESG 碳减排" [ref=e598]
+          - row "GET /api/reports/export CSV 导出" [ref=e599]:
+            - cell "GET" [ref=e600]
+            - cell "/api/reports/export" [ref=e601]:
+              - code [ref=e602]: /api/reports/export
+            - cell "CSV 导出" [ref=e603]
+          - row "GET /api/settings/health 健康检查" [ref=e604]:
+            - cell "GET" [ref=e605]
+            - cell "/api/settings/health" [ref=e606]:
+              - code [ref=e607]: /api/settings/health
+            - cell "健康检查" [ref=e608]
+          - row "GET /api/settings/payment-rates 支付汇率" [ref=e609]:
+            - cell "GET" [ref=e610]
+            - cell "/api/settings/payment-rates" [ref=e611]:
+              - code [ref=e612]: /api/settings/payment-rates
+            - cell "支付汇率" [ref=e613]
+          - row "GET /api/settings/users 用户列表" [ref=e614]:
+            - cell "GET" [ref=e615]
+            - cell "/api/settings/users" [ref=e616]:
+              - code [ref=e617]: /api/settings/users
+            - cell "用户列表" [ref=e618]
+          - row "POST /api/settings/users 新增用户" [ref=e619]:
+            - cell "POST" [ref=e620]
+            - cell "/api/settings/users" [ref=e621]:
+              - code [ref=e622]: /api/settings/users
+            - cell "新增用户" [ref=e623]
+          - row "GET /api/v1/health API v1 健康探活" [ref=e624]:
+            - cell "GET" [ref=e625]
+            - cell "/api/v1/health" [ref=e626]:
+              - code [ref=e627]: /api/v1/health
+            - cell "API v1 健康探活" [ref=e628]
+          - row "POST /api/controller/validate-token 控制器 Token 验证（Web 模拟器用）" [ref=e629]:
+            - cell "POST" [ref=e630]
+            - cell "/api/controller/validate-token" [ref=e631]:
+              - code [ref=e632]: /api/controller/validate-token
+            - cell "控制器 Token 验证（Web 模拟器用）" [ref=e633]
+      - heading "curl 示例" [level=3] [ref=e634]
+      - code [ref=e636]:
+        - text: "# 登录 curl -c cookies.txt -X POST \\ -d \"username=admin&password=admin123\" \\ http://localhost:8000/login"
+        - heading "仪表盘增强统计" [level=1] [ref=e637]
+        - text: curl -b cookies.txt http://localhost:8000/api/dashboard/enhanced-stats?days=30
+        - heading "创建客户" [level=1] [ref=e638]
+        - text: "curl -b cookies.txt -X POST -H \"Content-Type: application/json\" \\ -d '{\"name\":\"Test\",\"phone\":\"+855999\",\"device_id\":\"DEV-T1\",\"secret_key\":\"'$(python3 -c \"import secrets;print(secrets.token_hex(16))\")'\"}' \\ http://localhost:8000/api/customers"
+        - heading "创建合同 → 审批 → 还款 → 结清" [level=1] [ref=e639]
+        - text: "CUST_ID=\"Cxxxx\" PROD_ID=$(curl -b cookies.txt http://localhost:8000/api/loan-products | python3 -c \"import sys,json;print(json.load(sys.stdin)[0]['id'])\") CT_ID=$(curl -b cookies.txt -X POST -H \"Content-Type: application/json\" \\ -d \"{\\\"customer_id\\\":\\\"$CUST_ID\\\",\\\"product_id\\\":\\\"$PROD_ID\\\"}\" \\ http://localhost:8000/api/contracts | python3 -c \"import sys,json;print(json.load(sys.stdin)['id'])\") curl -b cookies.txt -X PUT http://localhost:8000/api/contracts/$CT_ID/approve"
+        - heading "获取第一期 schedule_id 后还款" [level=1] [ref=e640]
+        - text: "curl -b cookies.txt -X POST -H \"Content-Type: application/json\" \\ -d '{\"schedule_id\":\"RSxxxx\",\"amount\":43.31}' \\ http://localhost:8000/api/contracts/$CT_ID/pay"
+      - separator [ref=e641]
+      - heading "6. 环境要求与安装" [level=2] [ref=e642]
+      - listitem [ref=e643]: Python 3.10+
+      - listitem [ref=e644]: PostgreSQL 15+
+      - listitem [ref=e645]: Redis 8+
+      - heading "数据库初始化（首次）" [level=3] [ref=e646]
+      - code [ref=e648]: psql -U postgres -c "CREATE USER paygo_user WITH PASSWORD 'PaygoDB2026!';" psql -U postgres -c "CREATE DATABASE paygo_platform OWNER paygo_user;" psql -U postgres -c "CREATE DATABASE paygo_platform_test OWNER paygo_user;" psql -U postgres -d paygo_platform -c "GRANT ALL ON SCHEMA public TO paygo_user;" psql -U postgres -d paygo_platform_test -c "GRANT ALL ON SCHEMA public TO paygo_user;"
+      - heading "Homebrew 安装（macOS）" [level=3] [ref=e649]
+      - code [ref=e651]: brew install postgresql@15 redis brew services start postgresql@15 brew services start redis
+      - separator [ref=e652]
+      - heading "7. 运行测试" [level=2] [ref=e653]
+      - code [ref=e655]: "source venv/bin/activate pytest tests/ -v # 200 个测试"
+      - text: 测试使用独立数据库
+      - code [ref=e656]: paygo_platform_test
+      - text: ，不影响开发数据。
+      - separator [ref=e657]
+      - heading "8. 项目结构" [level=2] [ref=e658]
+      - code [ref=e660]: "paygo-platform/ ├── app/ │ ├── main.py # FastAPI 入口（lifespan 管理 DB/Redis/中间件/迁移） │ ├── settings.py # 数据库/Redis/安全/JWT/限流 配置 │ ├── models.py # SQLAlchemy ORM（16 张表） │ ├── database.py # async engine + session 工厂 │ ├── redis.py # Redis session/缓存/防重放 │ ├── store.py # async 数据访问层（CRUD/还款/逾期/告警/标签/360） │ ├── security.py # bcrypt + Fernet + JWT │ ├── middleware.py # API 限流 + 请求日志 │ └── routers/ │ ├── auth.py # 登录/登出（bcrypt + JWT + session） │ ├── customers.py # 客户 CRUD + 模拟支付 + 锁定/解锁 + 设备地图 │ ├── contracts.py # 合同 + 贷款产品 + 还款/逾期/结清 │ ├── tokens.py # Token 管理（列表/详情/补发/作废/批量） │ ├── alerts.py # 告警中心（规则/列表/详情/认领/解决/升级） │ ├── dashboard.py # 仪表盘统计（基础 + 增强） │ ├── reports.py # 报表中心（汇总/ESG/CSV导出） │ ├── settings.py # 系统设置（健康检查/汇率/模板/用户） │ └── config.py # 支付汇率配置 ├── scripts/ │ └── seed_demo_data.py # 演示数据初始化脚本 ├── controller/ │ ├── controller.py # 终端 UI（Token 输入/密钥绑定） │ └── state_manager.py # 状态机 + PostgreSQL 持久化 ├── static/ │ ├── style.css # 全局样式（绿色主题 #059669） │ └── logo.png ├── templates/ │ ├── base.html # 布局框架（8 个导航 Tab） │ ├── login.html # 登录页 │ └── dashboard.html # 主界面 SPA（全部 8 个模块） └── tests/ # 200 个测试"
+      - separator [ref=e661]
+      - heading "9. 环境变量" [level=2] [ref=e662]
+      - table [ref=e663]:
+        - rowgroup [ref=e664]:
+          - row "变量 默认值 说明" [ref=e665]:
+            - cell "变量" [ref=e666]
+            - cell "默认值" [ref=e667]
+            - cell "说明" [ref=e668]
+          - row "DATABASE_URL postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform 数据库连接串" [ref=e669]:
+            - columnheader "DATABASE_URL" [ref=e670]:
+              - code [ref=e671]: DATABASE_URL
+            - columnheader "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform" [ref=e672]:
+              - code [ref=e673]: postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform
+            - columnheader "数据库连接串" [ref=e674]
+          - row "TEST_DATABASE_URL 同上，数据库 paygo_platform_test 测试数据库" [ref=e675]:
+            - cell "TEST_DATABASE_URL" [ref=e676]:
+              - code [ref=e677]: TEST_DATABASE_URL
+            - cell "同上，数据库 paygo_platform_test" [ref=e678]:
+              - text: 同上，数据库
+              - code [ref=e679]: paygo_platform_test
+            - cell "测试数据库" [ref=e680]
+          - row "REDIS_URL redis://localhost:6379/0 Redis 连接串" [ref=e681]:
+            - cell "REDIS_URL" [ref=e682]:
+              - code [ref=e683]: REDIS_URL
+            - cell "redis://localhost:6379/0" [ref=e684]:
+              - code [ref=e685]: redis://localhost:6379/0
+            - cell "Redis 连接串" [ref=e686]
+          - row "DB_POOL_SIZE 10 连接池常驻连接数" [ref=e687]:
+            - cell "DB_POOL_SIZE" [ref=e688]:
+              - code [ref=e689]: DB_POOL_SIZE
+            - cell "10" [ref=e690]:
+              - code [ref=e691]: "10"
+            - cell "连接池常驻连接数" [ref=e692]
+          - row "DB_MAX_OVERFLOW 20 连接池峰值溢出" [ref=e693]:
+            - cell "DB_MAX_OVERFLOW" [ref=e694]:
+              - code [ref=e695]: DB_MAX_OVERFLOW
+            - cell "20" [ref=e696]:
+              - code [ref=e697]: "20"
+            - cell "连接池峰值溢出" [ref=e698]
+          - row "CACHE_TTL_API 60 API 缓存 TTL（秒）" [ref=e699]:
+            - cell "CACHE_TTL_API" [ref=e700]:
+              - code [ref=e701]: CACHE_TTL_API
+            - cell "60" [ref=e702]:
+              - code [ref=e703]: "60"
+            - cell "API 缓存 TTL（秒）" [ref=e704]
+          - row "SESSION_TTL 1800 Session TTL（30分钟）" [ref=e705]:
+            - cell "SESSION_TTL" [ref=e706]:
+              - code [ref=e707]: SESSION_TTL
+            - cell "1800" [ref=e708]:
+              - code [ref=e709]: "1800"
+            - cell "Session TTL（30分钟）" [ref=e710]
+          - row "ANTIREPLAY_TTL 604800 Token 防重放 TTL（7天）" [ref=e711]:
+            - cell "ANTIREPLAY_TTL" [ref=e712]:
+              - code [ref=e713]: ANTIREPLAY_TTL
+            - cell "604800" [ref=e714]:
+              - code [ref=e715]: "604800"
+            - cell "Token 防重放 TTL（7天）" [ref=e716]
+          - row "ADMIN_USERNAME admin 管理员用户名" [ref=e717]:
+            - cell "ADMIN_USERNAME" [ref=e718]:
+              - code [ref=e719]: ADMIN_USERNAME
+            - cell "admin" [ref=e720]:
+              - code [ref=e721]: admin
+            - cell "管理员用户名" [ref=e722]
+          - row "ADMIN_PASSWORD_HASH (空) bcrypt 密码哈希" [ref=e723]:
+            - cell "ADMIN_PASSWORD_HASH" [ref=e724]:
+              - code [ref=e725]: ADMIN_PASSWORD_HASH
+            - cell "(空)" [ref=e726]
+            - cell "bcrypt 密码哈希" [ref=e727]
+          - row "SECRET_KEY_MASTER_KEY (空=自动生成) Fernet 加密主密钥" [ref=e728]:
+            - cell "SECRET_KEY_MASTER_KEY" [ref=e729]:
+              - code [ref=e730]: SECRET_KEY_MASTER_KEY
+            - cell "(空=自动生成)" [ref=e731]
+            - cell "Fernet 加密主密钥" [ref=e732]
+          - row "RATE_LIMIT_PER_MINUTE 100 API 限流（次/分钟/IP）" [ref=e733]:
+            - cell "RATE_LIMIT_PER_MINUTE" [ref=e734]:
+              - code [ref=e735]: RATE_LIMIT_PER_MINUTE
+            - cell "100" [ref=e736]:
+              - code [ref=e737]: "100"
+            - cell "API 限流（次/分钟/IP）" [ref=e738]
+          - row "LOGIN_RATE_LIMIT_PER_MINUTE 10 登录限流" [ref=e739]:
+            - cell "LOGIN_RATE_LIMIT_PER_MINUTE" [ref=e740]:
+              - code [ref=e741]: LOGIN_RATE_LIMIT_PER_MINUTE
+            - cell "10" [ref=e742]:
+              - code [ref=e743]: "10"
+            - cell "登录限流" [ref=e744]
+          - row "LOGIN_MAX_FAILURES 5 登录锁定阈值" [ref=e745]:
+            - cell "LOGIN_MAX_FAILURES" [ref=e746]:
+              - code [ref=e747]: LOGIN_MAX_FAILURES
+            - cell "5" [ref=e748]:
+              - code [ref=e749]: "5"
+            - cell "登录锁定阈值" [ref=e750]
+          - row "LOGIN_LOCKOUT_MINUTES 15 锁定时间（分钟）" [ref=e751]:
+            - cell "LOGIN_LOCKOUT_MINUTES" [ref=e752]:
+              - code [ref=e753]: LOGIN_LOCKOUT_MINUTES
+            - cell "15" [ref=e754]:
+              - code [ref=e755]: "15"
+            - cell "锁定时间（分钟）" [ref=e756]
+          - row "JWT_SECRET_KEY (内置默认) JWT 签名密钥" [ref=e757]:
+            - cell "JWT_SECRET_KEY" [ref=e758]:
+              - code [ref=e759]: JWT_SECRET_KEY
+            - cell "(内置默认)" [ref=e760]
+            - cell "JWT 签名密钥" [ref=e761]
+          - row "JWT_ACCESS_TOKEN_EXPIRE 15 JWT Access Token 有效期（分钟）" [ref=e762]:
+            - cell "JWT_ACCESS_TOKEN_EXPIRE" [ref=e763]:
+              - code [ref=e764]: JWT_ACCESS_TOKEN_EXPIRE
+            - cell "15" [ref=e765]:
+              - code [ref=e766]: "15"
+            - cell "JWT Access Token 有效期（分钟）" [ref=e767]
+          - row "JWT_REFRESH_TOKEN_EXPIRE 7 JWT Refresh Token 有效期（天）" [ref=e768]:
+            - cell "JWT_REFRESH_TOKEN_EXPIRE" [ref=e769]:
+              - code [ref=e770]: JWT_REFRESH_TOKEN_EXPIRE
+            - cell "7" [ref=e771]:
+              - code [ref=e772]: "7"
+            - cell "JWT Refresh Token 有效期（天）" [ref=e773]
+      - separator [ref=e774]
+      - heading "10. 远程部署" [level=2] [ref=e775]
+      - heading "Docker Compose" [level=3] [ref=e776]
+      - code [ref=e778]: "services: app: build: . ports: [\"8000:8000\"] environment: DATABASE_URL: postgresql+asyncpg://paygo_user:${DB_PASSWORD}@db:5432/paygo_platform REDIS_URL: redis://redis:6379/0 JWT_SECRET_KEY: ${JWT_SECRET_KEY} SECRET_KEY_MASTER_KEY: ${SECRET_KEY_MASTER_KEY} depends_on: [db, redis] db: image: postgres:15 environment: POSTGRES_USER: paygo_user POSTGRES_PASSWORD: ${DB_PASSWORD} POSTGRES_DB: paygo_platform volumes: [pgdata:/var/lib/postgresql/data] redis: image: redis:8-alpine volumes: pgdata:"
+      - code [ref=e780]:
+        - text: DB_PASSWORD=
+        - generic [ref=e781]:
+          - text: JWT_SECRET_KEY=
+          - generic [ref=e782]: SECRET_KEY_MASTER_KEY= docker compose up -d
+      - heading "云托管（Render / Railway / Fly.io）" [level=3] [ref=e783]
+      - listitem [ref=e784]: 推送代码到 GitHub
+      - listitem [ref=e785]:
+        - text: "创建 Web Service，Build:"
+        - code [ref=e786]: pip install -r requirements.txt
+      - listitem [ref=e787]:
+        - text: "Start:"
+        - code [ref=e788]: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+      - listitem [ref=e789]: 配置环境变量指向云 PostgreSQL + Redis
+      - listitem [ref=e790]:
+        - text: 健康检查端点：
+        - code [ref=e791]: GET /api/v1/health
+      - separator [ref=e792]
+      - heading "11. 原型模拟边界说明" [level=2] [ref=e793]
+      - text: 以下功能在原型阶段仅做
+      - strong [ref=e794]: 模拟
+      - text: ，部署到云也无法真实对接：
+      - table [ref=e795]:
+        - rowgroup [ref=e796]:
+          - row "功能 模拟方式 需真实对接时" [ref=e797]:
+            - cell "功能" [ref=e798]
+            - cell "模拟方式" [ref=e799]
+            - cell "需真实对接时" [ref=e800]
+          - row "Bakong 支付 页面按钮 → 手动确认 + 自动触发 Token 柬埔寨国家银行 API 权限" [ref=e801]:
+            - columnheader "Bakong 支付" [ref=e802]
+            - columnheader "页面按钮 → 手动确认 + 自动触发 Token" [ref=e803]
+            - columnheader "柬埔寨国家银行 API 权限" [ref=e804]
+          - row "SMS 网关 弹窗展示短信内容 + DB 记录 Cellcard/Smart SMPP 企业账号" [ref=e805]:
+            - cell "SMS 网关" [ref=e806]
+            - cell "弹窗展示短信内容 + DB 记录" [ref=e807]
+            - cell "Cellcard/Smart SMPP 企业账号" [ref=e808]
+          - row "MQTT 设备通信 DB 手动更新设备状态 硬件控制板（ESP32/Dongle）" [ref=e809]:
+            - cell "MQTT 设备通信" [ref=e810]
+            - cell "DB 手动更新设备状态" [ref=e811]
+            - cell "硬件控制板（ESP32/Dongle）" [ref=e812]
+          - row "MFI CBS 同步 管理后台手动录入 MFI 核心银行系统 API" [ref=e813]:
+            - cell "MFI CBS 同步" [ref=e814]
+            - cell "管理后台手动录入" [ref=e815]
+            - cell "MFI 核心银行系统 API" [ref=e816]

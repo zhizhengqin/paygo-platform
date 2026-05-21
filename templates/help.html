@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .help-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .help-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; }
+  .help-tab { padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 500;
+    color: #64748b; background: none; border: none; border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.2s; font-family: inherit; }
+  .help-tab.active { color: #059669; border-bottom-color: #059669; }
+  .help-content { display: none; background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 24px; font-size: 14px; line-height: 1.8; color: #1e293b;
+    max-height: 70vh; overflow-y: auto; }
+  .help-content.active { display: block; }
+  .help-content h1 { font-size: 22px; margin: 16px 0 8px; color: #0f172a; }
+  .help-content h2 { font-size: 18px; margin: 14px 0 6px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+  .help-content h3 { font-size: 15px; margin: 10px 0 4px; color: #334155; }
+  .help-content h4 { font-size: 14px; margin: 8px 0 4px; color: #475569; }
+  .help-content table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+  .help-content th, .help-content td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+  .help-content th { background: #f8fafc; font-weight: 600; }
+  .help-content code { background: #f1f5f9; padding: 1px 6px; border-radius: 3px; font-size: 13px; }
+  .help-content pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  .help-content pre code { background: none; color: inherit; }
+  .help-content img { max-width: 100%; }
+  .help-content blockquote { border-left: 3px solid #059669; padding: 8px 16px; margin: 12px 0; color: #475569; background: #f0fdf4; }
+  .help-content a { color: #059669; text-decoration: underline; }
+  .help-content ul, .help-content ol { padding-left: 24px; }
+  .help-content hr { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+  .help-content input[type="checkbox"] { margin-right: 6px; }
+</style>
+
+<div class="help-container">
+  <div class="help-tabs">
+    <button class="help-tab active" onclick="switchHelp('readme')">📖 操作手册</button>
+    <button class="help-tab" onclick="switchHelp('demo')">🎬 演示流程</button>
+  </div>
+  <div class="help-content active" id="help-readme">{{ readme_content | safe }}</div>
+  <div class="help-content" id="help-demo">{{ demo_content | safe }}</div>
+</div>
+
+<script>
+function switchHelp(tab) {
+  document.querySelectorAll('.help-tab').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.help-content').forEach(el => el.classList.remove('active'));
+  document.querySelector('.help-tab[onclick*="'+tab+'"]').classList.add('active');
+  document.getElementById('help-'+tab).classList.add('active');
+}
+</script>
+{% endblock %}

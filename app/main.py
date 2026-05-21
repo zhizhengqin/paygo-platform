@@ -139,6 +139,7 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(RateLimiterMiddleware)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/screenshots", StaticFiles(directory="docs/screenshots"), name="screenshots")
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(auth_router)
@@ -157,6 +158,103 @@ app.include_router(controller_router)
 async def api_v1_health():
     """API v1 健康检查（云部署探活端点）"""
     return {"status": "ok", "version": "1.0.0"}
+
+
+# ---- 平台说明书 ----
+
+import re as _re
+
+def _md_to_html(text: str) -> str:
+    """简易 Markdown → HTML，支持标题/代码块/表格/图片/链接/列表/粗体。"""
+    # 代码块 (```...```)
+    text = _re.sub(r'```(\w*)\n(.*?)```', r'<pre><code>\2</code></pre>', text, flags=_re.DOTALL)
+    # 内联代码
+    text = _re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+    # 图片（修正相对路径 → 绝对路径）
+    def _fix_img_path(m):
+        alt, src = m.group(1), m.group(2)
+        # ../screenshots/... → /screenshots/...
+        src = src.replace('../screenshots/', '/screenshots/')
+        # docs/screenshots/... → /screenshots/...
+        src = _re.sub(r'^docs/screenshots/', '/screenshots/', src)
+        # bare filename without path → /screenshots/
+        if not src.startswith(('http', '/', 'data:')):
+            src = '/screenshots/' + src.split('/')[-1]
+        return f'<img src="{src}" alt="{alt}">'
+    text = _re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', _fix_img_path, text)
+    # 链接
+    text = _re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
+    # 粗体
+    text = _re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    # 标题
+    text = _re.sub(r'^#### (.+)$', r'<h4>\1</h4>', text, flags=_re.MULTILINE)
+    text = _re.sub(r'^### (.+)$', r'<h3>\1</h3>', text, flags=_re.MULTILINE)
+    text = _re.sub(r'^## (.+)$', r'<h2>\1</h2>', text, flags=_re.MULTILINE)
+    text = _re.sub(r'^# (.+)$', r'<h1>\1</h1>', text, flags=_re.MULTILINE)
+    # 表格（简化：|...| 行包裹为 table）
+    lines = text.split('\n')
+    result = []
+    in_table = False
+    for i, line in enumerate(lines):
+        if line.startswith('|') and line.endswith('|'):
+            if not in_table:
+                result.append('<table>')
+                in_table = True
+            is_header = '---' in line
+            cells = [c.strip() for c in line.split('|')[1:-1]]
+            tag = 'th' if (is_header or (i > 0 and '---' in lines[i-1] if i > 0 else False)) else 'td'
+            # Skip separator rows
+            if all(_re.match(r'^:?-{3,}:?$', c) for c in cells):
+                continue
+            result.append('<tr>' + ''.join(f'<{tag}>{c}</{tag}>' for c in cells) + '</tr>')
+        else:
+            if in_table:
+                result.append('</table>')
+                in_table = False
+            # 列表
+            if _re.match(r'^[-*] ', line):
+                result.append('<li>' + line[2:] + '</li>')
+            elif _re.match(r'^\d+\. ', line):
+                result.append('<li>' + _re.sub(r'^\d+\. ', '', line) + '</li>')
+            elif line.startswith('> '):
+                result.append('<blockquote>' + line[2:] + '</blockquote>')
+            elif line.startswith('---'):
+                result.append('<hr>')
+            elif line.strip() == '':
+                result.append('<br>')
+            else:
+                result.append(line)
+    if in_table:
+        result.append('</table>')
+    return '\n'.join(result)
+
+
+@app.get("/help")
+async def help_page(request: Request):
+    """平台说明书 — README + 演示流程手册"""
+    import os as _os
+    base = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+
+    readme_path = _os.path.join(base, "README.md")
+    demo_path = _os.path.join(base, "docs", "项目文档", "平台演示流程手册.md")
+
+    readme_html = ""
+    demo_html = ""
+    try:
+        with open(readme_path) as f:
+            readme_html = _md_to_html(f.read())
+    except Exception:
+        readme_html = "<p>README.md 加载失败</p>"
+    try:
+        with open(demo_path) as f:
+            demo_html = _md_to_html(f.read())
+    except Exception:
+        demo_html = "<p>演示流程手册加载失败</p>"
+
+    return templates.TemplateResponse(request, "help.html", {
+        "readme_content": readme_html,
+        "demo_content": demo_html,
+    })
 
 
 @app.get("/dashboard")
