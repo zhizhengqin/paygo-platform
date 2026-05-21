@@ -50,7 +50,6 @@ body {
   position: sticky;
   top: 0;
   z-index: 50;
-  position: relative;
 }
 .navbar-brand {
   display: flex;
@@ -611,17 +610,29 @@ body {
 .hamburger-btn { display: none; }
 
 @media (max-width: 640px) {
+  /* 全局防溢出 */
+  html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
   /* 导航栏：logo 左，链接右，同一行 */
   .navbar {
     display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: nowrap; padding: 8px 12px; gap: 4px;
+    flex-wrap: nowrap; padding: 6px 8px; gap: 4px;
+    height: 44px; max-width: 100vw; overflow: hidden;
+    position: sticky; top: 0; z-index: 50;
   }
-  .navbar-brand { display: flex; align-items: center; gap: 4px; font-size: 12px; flex-shrink: 0; }
+  .navbar-brand {
+    display: flex; align-items: center; gap: 4px; font-size: 12px;
+    flex-shrink: 0; min-width: auto;
+  }
   .navbar-logo { width: 22px; height: 22px; }
   .navbar-title { display: none; }
   .navbar-center { display: none; }
   .navbar-right { display: flex; align-items: center; gap: 2px; font-size: 11px; flex-shrink: 0; }
-  .navbar-right a { margin-right: 0 !important; white-space: nowrap; padding: 2px 4px; }
+  .navbar-right a { margin-right: 0 !important; white-space: nowrap; padding: 4px 6px; font-size: 11px; }
+  .navbar a { padding: 4px 6px; font-size: 11px; }
 
   /* 汉堡菜单按钮 */
   .hamburger-btn {
@@ -637,10 +648,10 @@ body {
   .nav-tabs {
     display: none; flex-direction: column; gap: 0; padding: 0;
     position: absolute; top: 100%; left: 0; right: 0; z-index: 9999;
-    height: auto; width: auto;
+    height: auto; width: 100vw;
     background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     border-bottom: 2px solid var(--border);
-    max-height: 60vh; overflow-y: auto;
+    max-height: 70vh; overflow-y: auto;
   }
   .nav-tabs.open { display: flex; height: auto !important; min-height: unset !important; max-height: none; }
 
@@ -663,43 +674,72 @@ body {
   .nav-tab.active { background: #f0fdf4; color: #059669; font-weight: 600;
     border-left: 3px solid #059669; padding-left: 15px; }
 
-  /* 左侧面板：全宽覆盖，默认隐藏，点击客户时显示 */
-  .main-layout { flex-direction: column; }
+  /* 主布局 */
+  .main-layout {
+    flex-direction: column; height: auto; min-height: calc(100vh - 88px);
+  }
   .sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
   .sidebar-header { padding: 8px 12px; }
-  .detail-panel { width: 100%; }
+  .detail-panel {
+    width: 100%; padding: 12px; overflow-x: hidden;
+  }
 
   /* KPI 卡片 */
   .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .kpi-card { padding: 12px; }
+  .kpi-card { padding: 12px; overflow: hidden; }
   .kpi-value { font-size: 22px; }
   .kpi-label { font-size: 11px; }
 
+  /* 仪表盘 Header */
+  .dash-header { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .dash-header h2 { font-size: 16px; }
+
   /* 图表 */
-  .dash-chart-box { padding: 12px; }
-  .chart-wrap { height: 200px; }
+  .dash-grid { grid-template-columns: 1fr; gap: 12px; }
+  .dash-chart-box { padding: 12px; overflow: hidden; }
+  .chart-wrap { width: 100%; height: 200px; overflow: hidden; }
+  .chart-wrap > div { max-width: 100% !important; }
 
   /* 弹窗 */
-  .modal-card { width: 92vw; padding: 20px; margin: 8px; }
+  .modal-overlay { padding: 0; }
+  .modal-card { width: 94vw; padding: 18px; margin: 8px; max-width: 94vw; }
+  .modal-card h3 { font-size: 15px; }
 
-  /* 表格 */
+  /* 表格容器 — 横向滚动 */
   .tx-table { font-size: 11px; }
-  .tx-table th, .tx-table td { padding: 6px 8px; }
+  .tx-table th, .tx-table td { padding: 6px 8px; white-space: nowrap; }
+  .dash-table-box { overflow-x: auto; }
 
   /* 客户搜索 */
   #customerSearch { width: 100%; }
 
   /* 浮动控制器 */
-  .floating-ctrl { width: 92vw; max-height: 55vh; right: 4vw; bottom: 70px; }
+  .floating-ctrl { width: 92vw; max-height: 55vh; right: 4vw; bottom: 70px; left: 4vw; }
   .ctrl-fab { bottom: 16px; right: 16px; width: 44px; height: 44px; font-size: 20px; }
 
   /* 操作按钮组 */
   .action-group { flex-direction: column; }
   .action-group .btn { width: 100%; }
 
-  /* 合同详情 */
+  /* 详情页 */
+  .detail-card { max-width: 100%; }
+  .detail-header { flex-direction: column; gap: 8px; align-items: flex-start; }
   .detail-row { flex-direction: column; align-items: flex-start; gap: 2px; }
   .detail-row .label { min-width: auto; }
+  .detail-body { padding: 12px; }
+
+  /* 报表 */
+  #reportsHome { padding: 12px !important; max-width: 100% !important; }
+
+  /* 系统设置 */
+  .settings-grid { grid-template-columns: 1fr; }
+
+  /* 表单 */
+  .form-row { flex-direction: column; gap: 8px; }
+  .form-group input, .form-group select, .form-group textarea { font-size: 16px; } /* 防 iOS 缩放 */
+
+  /* 登录页面 */
+  .login-card { width: 92vw; padding: 24px 20px; }
 }
 
 

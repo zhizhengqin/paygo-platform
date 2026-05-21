@@ -385,14 +385,28 @@ function showDashboardWithDays(d) {
   showDashboard();
 }
 
+// 全局 ECharts 实例管理（避免泄漏 + 支持 resize）
+var _charts = [];
+function _disposeCharts() {
+  _charts.forEach(function(c) { try { c.dispose(); } catch(e) {} });
+  _charts = [];
+}
+function _addChart(el) {
+  _disposeCharts(); // 先清理旧实例（每次 showDashboard 重建 DOM）
+  var c = echarts.init(el); _charts.push(c); return c;
+}
+window.addEventListener('resize', function() {
+  _charts.forEach(function(c) { try { c.resize(); } catch(e) {} });
+});
+
 function renderRevenueChart(data) {
   var el = document.getElementById('revenueChart'); if (!el) return;
-  var chart = echarts.init(el);
+  var chart = _addChart(el);
   chart.setOption({
     tooltip: {trigger:'axis'},
-    grid: {left:50,right:20,top:20,bottom:30},
-    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:10,rotate:45}},
-    yAxis: {type:'value',axisLabel:{fontSize:10}},
+    grid: {left:45,right:10,top:15,bottom:25},
+    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:9,rotate:30}},
+    yAxis: {type:'value',axisLabel:{fontSize:9}},
     series: [{type:'line',data:data.map(function(d){return d.amount;}),smooth:true,
       lineStyle:{color:'#059669'},itemStyle:{color:'#059669'},areaStyle:{color:'rgba(5,150,105,0.1)'}}]
   });
@@ -400,12 +414,12 @@ function renderRevenueChart(data) {
 
 function renderTokenChart(data) {
   var el = document.getElementById('tokenChart'); if (!el) return;
-  var chart = echarts.init(el);
+  var chart = _addChart(el);
   chart.setOption({
     tooltip: {trigger:'axis'},
-    grid: {left:50,right:20,top:20,bottom:30},
-    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:10,rotate:45}},
-    yAxis: {type:'value',axisLabel:{fontSize:10}},
+    grid: {left:45,right:10,top:15,bottom:25},
+    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:9,rotate:30}},
+    yAxis: {type:'value',axisLabel:{fontSize:9}},
     series: [{type:'bar',data:data.map(function(d){return d.count;}),
       itemStyle:{color:'#3b82f6',borderRadius:[4,4,0,0]}}]
   });
@@ -413,25 +427,25 @@ function renderTokenChart(data) {
 
 function renderAlertLevelChart(data) {
   var el = document.getElementById('alertLevelChart'); if (!el) return;
-  var chart = echarts.init(el);
+  var chart = _addChart(el);
   chart.setOption({
     tooltip: {trigger:'item'},
-    series: [{type:'pie',radius:['40%','70%'],
+    series: [{type:'pie',radius:['40%','65%'],center:['50%','50%'],
       data:[{value:data.P0,name:'P0',itemStyle:{color:'#dc2626'}},
             {value:data.P1,name:'P1',itemStyle:{color:'#f59e0b'}},
             {value:data.P2,name:'P2',itemStyle:{color:'#3b82f6'}}],
-      label:{formatter:'{b}: {c}'}}]
+      label:{fontSize:10,formatter:'{b}: {c}'}}]
   });
 }
 
 function renderAlertTrendChart(data) {
   var el = document.getElementById('alertTrendChart'); if (!el) return;
-  var chart = echarts.init(el);
+  var chart = _addChart(el);
   chart.setOption({
     tooltip: {trigger:'axis'},
-    grid: {left:40,right:20,top:20,bottom:30},
-    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:10}},
-    yAxis: {type:'value',axisLabel:{fontSize:10}},
+    grid: {left:40,right:10,top:15,bottom:25},
+    xAxis: {type:'category',data:data.map(function(d){return d.date;}),axisLabel:{fontSize:9}},
+    yAxis: {type:'value',axisLabel:{fontSize:9}},
     series: [{type:'line',data:data.map(function(d){return d.count;}),
       lineStyle:{color:'#dc2626'},itemStyle:{color:'#dc2626'},areaStyle:{color:'rgba(220,38,38,0.08)'}}]
   });
@@ -439,14 +453,14 @@ function renderAlertTrendChart(data) {
 
 function renderDeviceStatusChart(k) {
   var el = document.getElementById('deviceStatusChart'); if (!el) return;
-  var chart = echarts.init(el);
+  var chart = _addChart(el);
   chart.setOption({
     tooltip: {trigger:'item'},
-    series: [{type:'pie',radius:'60%',
+    series: [{type:'pie',radius:'55%',center:['50%','50%'],
       data:[{value:k.active_devices,name:'活跃',itemStyle:{color:'#059669'}},
             {value:k.locked_devices,name:'逾期锁定',itemStyle:{color:'#dc2626'}},
             {value:k.permanent_devices,name:'永久解锁',itemStyle:{color:'#f59e0b'}}],
-      label:{formatter:'{b}: {c}'}}]
+      label:{fontSize:10,formatter:'{b}: {c}'}}]
   });
 }
 
