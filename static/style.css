@@ -629,14 +629,14 @@ body {
     background: #f8fafc; border: none; border-bottom: 2px solid var(--border);
     font-size: 14px; font-weight: 600; color: var(--text);
     text-align: left; cursor: pointer; font-family: inherit;
-    position: relative; z-index: 200;
+    position: relative; z-index: 10000;
   }
   .hamburger-btn::after { content: " ▾"; font-size: 12px; color: #94a3b8; }
 
   /* Tab 导航：绝对定位覆盖在内容上方，避免被内容遮挡 */
   .nav-tabs {
     display: none; flex-direction: column; gap: 0; padding: 0;
-    position: absolute; top: 100%; left: 0; right: 0; z-index: 199;
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 9999;
     height: auto; width: auto;
     background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     border-bottom: 2px solid var(--border);
@@ -648,7 +648,7 @@ body {
   .nav-overlay { display: none; }
   .nav-overlay.show {
     display: block; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.3); z-index: 198;
+    background: rgba(0,0,0,0.3); z-index: 9998;
   }
 
   .nav-tab {
