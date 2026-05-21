@@ -54,6 +54,30 @@
       </div>
       <button class="btn btn-outline btn-sm" onclick="fillRandomKey()" title="随机生成密钥">随机</button>
     </div>
+    <div class="form-group">
+      <label>安装地址</label>
+      <input type="text" id="newAddress" placeholder="如 123 Norodom Blvd, Phnom Penh">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>GPS 纬度</label>
+        <input type="number" id="newGpsLat" placeholder="如 11.5564" step="any">
+      </div>
+      <div class="form-group">
+        <label>GPS 经度</label>
+        <input type="number" id="newGpsLon" placeholder="如 104.9282" step="any">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>MFI 机构</label>
+      <select id="newMfi" style="width:100%;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:14px;font-family:inherit;">
+        <option value="">-- 选择 MFI --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>标签（逗号分隔）</label>
+      <input type="text" id="newTags" placeholder="如 VIP, 新客户, 高风险">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('addCustomerModal')">取消</button>
       <button class="btn btn-primary" onclick="createCustomer()">确认添加</button>
@@ -563,11 +587,23 @@ async function selectCustomer(id) {
 }
 
 // ---- 新增客户 ----
-function showAddCustomerModal() {
+async function showAddCustomerModal() {
   document.getElementById('newName').value = '';
   document.getElementById('newPhone').value = '';
   document.getElementById('newDevice').value = '';
   document.getElementById('newSecretKey').value = '';
+  document.getElementById('newAddress').value = '';
+  document.getElementById('newGpsLat').value = '';
+  document.getElementById('newGpsLon').value = '';
+  document.getElementById('newTags').value = '';
+  // 加载 MFI 列表
+  try {
+    const resp = await fetch('/api/mfis');
+    const mfis = await resp.json();
+    const sel = document.getElementById('newMfi');
+    sel.innerHTML = '<option value="">-- 选择 MFI --</option>' +
+      mfis.map(function(m) { return '<option value="' + m.id + '">' + escapeHtml(m.name) + ' (' + escapeHtml(m.branch||'') + ')</option>'; }).join('');
+  } catch(e) {}
   document.getElementById('addCustomerModal').classList.add('show');
 }
 
@@ -576,12 +612,25 @@ async function createCustomer() {
   const phone = document.getElementById('newPhone').value.trim();
   const device_id = document.getElementById('newDevice').value.trim();
   const secret_key = document.getElementById('newSecretKey').value.trim();
-  if (!name || !phone || !device_id || !secret_key) { alert('请填写所有字段'); return; }
+  if (!name || !phone || !device_id || !secret_key) { alert('请填写所有必填字段（姓名、电话、设备编号、密钥）'); return; }
   if (secret_key.length !== 32) { alert('设备密钥必须为32位hex字符串'); return; }
+
+  const body = { name, phone, device_id, secret_key };
+  const address = document.getElementById('newAddress').value.trim();
+  if (address) body.address = address;
+  const lat = parseFloat(document.getElementById('newGpsLat').value);
+  const lon = parseFloat(document.getElementById('newGpsLon').value);
+  if (!isNaN(lat)) body.gps_latitude = lat;
+  if (!isNaN(lon)) body.gps_longitude = lon;
+  const mfi = document.getElementById('newMfi').value;
+  if (mfi) body.mfi_id = mfi;
+  const tagsStr = document.getElementById('newTags').value.trim();
+  if (tagsStr) body.tags = tagsStr.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+
   const resp = await fetch('/api/customers', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name, phone, device_id, secret_key})
+    body: JSON.stringify(body)
   });
   if (!resp.ok) {
     const err = await resp.json();

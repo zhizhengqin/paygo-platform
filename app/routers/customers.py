@@ -85,6 +85,11 @@ class CustomerCreate(BaseModel):
     phone: str
     device_id: str
     secret_key: str
+    address: str = None
+    gps_latitude: float = None
+    gps_longitude: float = None
+    mfi_id: str = None
+    tags: list[str] = None
 
 
 class TokenGenerate(BaseModel):
@@ -140,6 +145,17 @@ async def create_customer(request: Request, body: CustomerCreate,
             status_code=409,
             detail="该密钥已绑定到其他设备",
         )
+    # 扩展字段：地址/GPS/MFI/标签
+    if body.address or body.gps_latitude or body.mfi_id or body.tags:
+        from app.models import Customer as CM
+        c = await db.get(CM, cid)
+        if body.address: c.address = body.address
+        if body.gps_latitude: c.gps_latitude = body.gps_latitude
+        if body.gps_longitude: c.gps_longitude = body.gps_longitude
+        if body.mfi_id: c.mfi_id = body.mfi_id
+        if body.tags: c.tags = body.tags
+        await db.commit()
+
     await cache_delete("customers:*")
     customer = await store_get_customer(db, cid)
     return customer
