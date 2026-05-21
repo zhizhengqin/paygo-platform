@@ -607,6 +607,59 @@ body {
   .dash-grid { grid-template-columns: 1fr; }
 }
 
+/* ── 手机端适配 ── */
+@media (max-width: 640px) {
+  /* 导航栏 */
+  .navbar { flex-wrap: wrap; padding: 8px 12px; }
+  .navbar-brand { font-size: 12px; }
+  .navbar-title { display: none; }
+  .navbar-center { display: none; }
+  .navbar-right { font-size: 12px; }
+
+  /* Tab 导航：横向滚动 */
+  .nav-tabs { overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; padding: 6px 8px; gap: 4px; }
+  .nav-tab { font-size: 12px; padding: 6px 12px; flex-shrink: 0; }
+
+  /* 左侧面板：全宽覆盖，默认隐藏，点击客户时显示 */
+  .main-layout { flex-direction: column; }
+  .sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar-header { padding: 8px 12px; }
+  .detail-panel { width: 100%; }
+
+  /* KPI 卡片 */
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi-card { padding: 12px; }
+  .kpi-value { font-size: 22px; }
+  .kpi-label { font-size: 11px; }
+
+  /* 图表 */
+  .dash-chart-box { padding: 12px; }
+  .chart-wrap { height: 200px; }
+
+  /* 弹窗 */
+  .modal-card { width: 92vw; padding: 20px; margin: 8px; }
+
+  /* 表格 */
+  .tx-table { font-size: 11px; }
+  .tx-table th, .tx-table td { padding: 6px 8px; }
+
+  /* 客户搜索 */
+  #customerSearch { width: 100%; }
+
+  /* 浮动控制器 */
+  .floating-ctrl { width: 92vw; max-height: 55vh; right: 4vw; bottom: 70px; }
+  .ctrl-fab { bottom: 16px; right: 16px; width: 44px; height: 44px; font-size: 20px; }
+
+  /* 操作按钮组 */
+  .action-group { flex-direction: column; }
+  .action-group .btn { width: 100%; }
+
+  /* 合同详情 */
+  .detail-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .detail-row .label { min-width: auto; }
+}
+
+
 /* ── 合同管理 ── */
 .contract-status-draft { color: #64748b; }
 .contract-status-active { color: #059669; }
