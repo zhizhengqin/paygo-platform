@@ -16,7 +16,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 **访问**：http://localhost:8000/dashboard
 **登录**：`admin` / `admin123`
 
-> 首次启动自动创建 16 张表，种子 5 档贷款产品 + 3 条告警规则 + 支付汇率。运行 `scripts/seed_demo_data.py` 可加载完整演示数据（4 个客户 + 合同 + 还款记录）。
+> 首次启动自动创建 16 张表，种子 5 档贷款产品 + 3 条告警规则 + 支付汇率。云端访问 `/api/seed` 或本地运行 `scripts/seed_demo_data.py` 可加载完整演示数据（8 客户含全状态 + 7 合同 + 3 告警 + 3 MFI）。
 
 **平台顶部导航栏（8 个模块）**：
 
@@ -393,6 +393,9 @@ cd controller && python controller.py
 
 ## 4. 演示数据加载
 
+**云端（推荐）**：浏览器访问 `https://paygo-platform-production.up.railway.app/api/seed`，返回 `"returncode": 0` 即加载成功。
+
+**本地**：
 ```bash
 cd paygo-platform
 source venv/bin/activate
@@ -403,18 +406,25 @@ PYTHONPATH="." python scripts/seed_demo_data.py
 
 | 指标 | 值 |
 |:---|:---|
-| 总客户数 | 4 |
-| 活跃设备 | 2 |
+| 总客户数 | 8（含 VIP/大客户/新客户/逾期/永久解锁/草稿/回收 全状态） |
+| 活跃设备 | 3 |
 | 逾期锁定 | 1 |
+| 永久解锁 | 1 |
 | 贷款产品 | 5 档（6kW ~ 30kW） |
-| 合同 | 3 份（含还款计划） |
+| 合同 | 7 份（草稿/审批/执行中/逾期/结清/回收 全状态覆盖） |
+| 告警 | 3 条（P0/P1/P2，含 pending/claimed/closed） |
+| MFI 机构 | 3 家（LOLC / PRASAC / ACLEDA） |
 
 | 客户 | 电话 | 设备 | 合同 | 状态 |
 |:---|:---|:---|:---|:---|
-| Sok Heng | 0888888001 | DEV-KH-001 | 10kW-24月 | 🟢 活跃（还款中） |
-| Alice | 011222333 | DEV-KH-002 | 6kW-12月 | 🟢 活跃（还款中） |
-| Bob | 044555666 | DEV-KH-003 | 15kW-24月 | 🔴 逾期锁定 |
-| Sarun | 077123456 | DEV-KH-004 | 无 | ⚪ 待签约 |
+| Sok Heng | 0888888001 | DEV-KH-001 | 10kW-24月 | 🟢 活跃·VIP |
+| Chenda | 092222333 | DEV-KH-007 | 6kW-12月 | 🟢 活跃·标准 |
+| Dara | 095555666 | DEV-KH-008 | 30kW-24月 | 🟢 活跃·大客户 |
+| Bopha | 088999333 | DEV-KH-002 | 15kW-24月 | 🔴 逾期锁定 |
+| Vannak | 011222444 | DEV-KH-005 | 20kW-24月 | ⭐ 永久解锁 |
+| Sopheap | 088666111 | DEV-KH-003 | 无 | ⚪ 新客户·待签约 |
+| Kunthea | 096888222 | DEV-KH-006 | 8kW-12月 | 📝 草稿中 |
+| Rithy | 097123789 | DEV-KH-009 | 10kW-12月 | ✅ 已回收 |
 
 ---
 
@@ -664,13 +674,37 @@ volumes:
 DB_PASSWORD=<password> JWT_SECRET_KEY=<random> SECRET_KEY_MASTER_KEY=<random> docker compose up -d
 ```
 
-### 云托管（Render / Railway / Fly.io）
+### Railway 云部署
 
-1. 推送代码到 GitHub
-2. 创建 Web Service，Build: `pip install -r requirements.txt`
-3. Start: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-4. 配置环境变量指向云 PostgreSQL + Redis
-5. 健康检查端点：`GET /api/v1/health`
+**已部署地址**：https://paygo-platform-production.up.railway.app
+
+**重新部署步骤**：
+
+1. 推送代码到 GitHub（`git push origin main`）
+2. Railway 自动检测 GitHub 推送并触发重新部署
+3. 或手动：登录 [Railway Dashboard](https://railway.app) → 选择项目 → 点击 **Deploy**
+
+**部署后加载演示数据**：
+
+1. 浏览器访问：`https://paygo-platform-production.up.railway.app/api/seed`
+2. 等待返回 `"returncode": 0` 表示加载成功
+3. 访问首页：`https://paygo-platform-production.up.railway.app/dashboard`
+4. 登录：`admin` / `admin123`
+5. 仪表盘 KPI 卡片应显示：66 总客户、34 活跃设备、$4508 月收入等
+
+> **注意**：每次重新部署后，数据库被清空，需要重新访问 `/api/seed` 加载演示数据。
+> 如果仪表盘 KPI 显示为空，请确认 `/api/seed` 已执行成功，并等待 5 分钟缓存过期或直接重新部署。
+
+**环境变量（Railway 项目设置中配置）**：
+
+| 变量 | 说明 |
+|:---|:---|
+| `DATABASE_URL` | Railway 自动注入（PostgreSQL 插件） |
+| `REDIS_URL` | Railway 自动注入（Redis 插件） |
+| `SECRET_KEY_MASTER_KEY` | Fernet 密钥（需手动配置） |
+| `JWT_SECRET_KEY` | JWT 签名密钥（需手动配置） |
+
+**健康检查**：`GET /api/v1/health`
 
 ---
 
