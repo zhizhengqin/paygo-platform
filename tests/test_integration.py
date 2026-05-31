@@ -110,7 +110,7 @@ class TestUIPagesRender:
     async def test_login_page_renders(self, client):
         resp = await client.get("/login")
         assert resp.status_code == 200
-        assert "太阳能即付即用系统" in resp.text or "login" in resp.text.lower()
+        assert "柬埔寨即付即用系统" in resp.text or "login" in resp.text.lower()
 
     async def test_dashboard_renders_when_authenticated(self, client):
         sid = await _login(client)

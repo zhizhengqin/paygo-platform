@@ -1,4 +1,4 @@
-# 太阳能即付即用平台原型
+# 柬埔寨即付即用平台原型
 
 Python FastAPI + Jinja2 + PostgreSQL 15 + Redis 8。200 tests，16 张表，8 个导航 Tab。
 
