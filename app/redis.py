@@ -4,14 +4,24 @@ from typing import Optional
 
 import redis.asyncio as aioredis
 
-from app.settings import REDIS_URL, CACHE_TTL_API, SESSION_TTL, ANTIREPLAY_TTL
+from app.settings import REDIS_ENABLED, REDIS_URL, CACHE_TTL_API, SESSION_TTL, ANTIREPLAY_TTL
 
 _client: Optional[aioredis.Redis] = None
 
 
-async def init_redis() -> aioredis.Redis:
+async def init_redis() -> Optional[aioredis.Redis]:
     global _client
-    _client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    # 显式禁用或没有配置 Redis 时直接跳过
+    if not REDIS_ENABLED or not REDIS_URL:
+        _client = None
+        return None
+    try:
+        _client = aioredis.from_url(REDIS_URL, decode_responses=True)
+        # aioredis.from_url 是懒连接，ping 一下确认真实可用
+        await _client.ping()
+    except Exception:
+        # Redis 不可用时优雅降级，所有 Redis 操作走 None 分支
+        _client = None
     return _client
 
 

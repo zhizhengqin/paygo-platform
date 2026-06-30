@@ -38,6 +38,8 @@ TEST_DATABASE_URL = os.getenv(
     "postgresql+asyncpg://paygo_user:PaygoDB2026!@localhost:5432/paygo_platform_test",
 )
 
+# Redis 总开关：设为 0 时完全禁用 Redis（ Railway 无 Redis 时使用）
+REDIS_ENABLED = os.getenv("REDIS_ENABLED", "1") != "0"
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 # 连接池
